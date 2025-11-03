@@ -6,6 +6,7 @@ let refreshInterval;
 let countdownInterval;
 let countdownSeconds = 60;
 let isTabVisible = true;
+let portfolioStats = loadPortfolioStats();
 
 
 // API Usage Tracking
@@ -76,6 +77,8 @@ const portfolioContainer = document.getElementById('portfolio');
 const totalValueEl = document.getElementById('totalValue');
 const totalChangeEl = document.getElementById('totalChange');
 const lastUpdatedEl = document.getElementById('lastUpdated');
+const highestValueEl = document.getElementById('highestValue');
+const lowestValueEl = document.getElementById('lowestValue');
 const refreshStatusEl = document.getElementById('refreshStatus');
 const refreshTimerEl = document.getElementById('refreshTimer');
 const apiMonthlyEl = document.getElementById('apiMonthly');
@@ -91,6 +94,8 @@ const confirmMessage = document.getElementById('confirmMessage');
 const confirmCancelBtn = document.getElementById('confirmCancelBtn');
 const confirmOkBtn = document.getElementById('confirmOkBtn');
 
+updatePortfolioRecordsDisplay();
+
 // Initialize app
 async function init() {
     await loadAvailableCoins();
@@ -99,13 +104,18 @@ async function init() {
     // Initialize countdown display
     updateCountdown();
     
-    // Always fetch fresh data on page load
-    if (portfolio.length > 0) {
-        await updatePrices();
-    }
-    
+    // Always render portfolio first, even without prices
     renderPortfolio();
     updateSummary();
+    
+    // Then fetch fresh prices (don't block rendering)
+    if (portfolio.length > 0) {
+        updatePrices().catch(error => {
+            console.error('Error updating prices on init:', error);
+            // Portfolio is already rendered, so it will show with "Loading..." states
+        });
+    }
+    
     setupEventListeners();
     setupPageVisibility();
     startAutoRefresh();
@@ -113,11 +123,16 @@ async function init() {
     // Fetch fresh data when returning to tab
     document.addEventListener('visibilitychange', async () => {
         if (!document.hidden && portfolio.length > 0) {
-            // Small delay to ensure tab is fully visible
+            // Render first to ensure coins are visible
+            renderPortfolio();
+            updateSummary();
+            
+            // Small delay to ensure tab is fully visible, then fetch prices
             setTimeout(async () => {
-                await updatePrices();
-                renderPortfolio();
-                updateSummary();
+                updatePrices().catch(error => {
+                    console.error('Error updating prices on visibility change:', error);
+                    // Portfolio already rendered, just update with new prices if successful
+                });
             }, 100);
         }
     });
@@ -522,24 +537,13 @@ async function updatePrices() {
         renderPortfolio();
         updateSummary();
         updateLastUpdated();
-        
-        // Visual feedback
-        if (refreshStatusEl) {
-            refreshStatusEl.textContent = '🟢 Auto-refresh: Every 1 minute';
-        }
     } catch (error) {
         console.error('Error fetching prices:', error);
         
-        // Show error but don't break the UI - keep existing price data
-        if (refreshStatusEl) {
-            refreshStatusEl.textContent = '🔴 Error fetching prices';
-        }
-        
-        // Still render portfolio with existing/cached price data if available
-        if (Object.keys(priceData).length > 0) {
-            renderPortfolio();
-            updateSummary();
-        }
+        // Always render portfolio, even if prices failed - show "Loading..." states
+        // This ensures coins are visible even when API calls fail
+        renderPortfolio();
+        updateSummary();
         
         // Re-throw to allow caller to handle if needed
         throw error;
@@ -551,9 +555,6 @@ function renderPortfolio() {
     if (portfolio.length === 0) {
         portfolioContainer.innerHTML = `
             <div class="empty-state">
-                <svg class="empty-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                </svg>
                 <p class="empty-text">No coins added yet. Click "Add Coin" to get started!</p>
             </div>
         `;
@@ -656,13 +657,71 @@ function formatValue(value) {
     }
 }
 
+function formatPortfolioRecord(value) {
+    if (value === null || value === undefined) {
+        return '—';
+    }
+
+    const absValue = Math.abs(value);
+    let options;
+
+    if (absValue === 0) {
+        options = { minimumFractionDigits: 2, maximumFractionDigits: 2 };
+    } else if (absValue >= 1) {
+        options = { minimumFractionDigits: 2, maximumFractionDigits: 2 };
+    } else if (absValue >= 0.01) {
+        options = { minimumFractionDigits: 2, maximumFractionDigits: 4 };
+    } else {
+        options = { minimumFractionDigits: 4, maximumFractionDigits: 6 };
+    }
+
+    return '$' + value.toLocaleString('en-US', options);
+}
+
+function updatePortfolioRecordsDisplay() {
+    if (highestValueEl) {
+        highestValueEl.textContent = formatPortfolioRecord(portfolioStats.highestValue);
+    }
+    if (lowestValueEl) {
+        lowestValueEl.textContent = formatPortfolioRecord(portfolioStats.lowestValue);
+    }
+}
+
+function updatePortfolioRecords(currentValue) {
+    if (typeof currentValue !== 'number' || !Number.isFinite(currentValue)) {
+        return;
+    }
+
+    let shouldSave = false;
+
+    if (portfolioStats.highestValue === null || currentValue > portfolioStats.highestValue) {
+        portfolioStats.highestValue = currentValue;
+        shouldSave = true;
+    }
+
+    if (portfolioStats.lowestValue === null || currentValue < portfolioStats.lowestValue) {
+        portfolioStats.lowestValue = currentValue;
+        shouldSave = true;
+    }
+
+    if (shouldSave) {
+        savePortfolioStats();
+    }
+}
+
 // Update portfolio summary
 function updateSummary() {
     if (portfolio.length === 0) {
         animateNumberChange(totalValueEl, 0);
         totalChangeEl.textContent = '$0.00 (0.00%)';
         totalChangeEl.className = 'portfolio-change';
+        const body = document.body;
+        body.classList.remove('portfolio-low', 'portfolio-high');
+        body.classList.add('portfolio-low'); // 0 is less than 100k, so red
+        totalValueEl.classList.remove('portfolio-low', 'portfolio-high');
+        totalValueEl.classList.add('portfolio-low'); // 0 is less than 100k, so red
         if (lastUpdatedEl) lastUpdatedEl.textContent = 'Never';
+        updatePortfolioRecordsDisplay();
         return;
     }
 
@@ -688,9 +747,33 @@ function updateSummary() {
     // Animate portfolio value like a clock
     animateNumberChange(totalValueEl, totalValue);
     
+    // Apply background color based on portfolio value
+    const body = document.body;
+    body.classList.remove('portfolio-low', 'portfolio-high');
+    totalValueEl.classList.remove('portfolio-low', 'portfolio-high');
+    if (totalValue < 100000) {
+        body.classList.add('portfolio-low');
+        totalValueEl.classList.add('portfolio-low');
+    } else if (totalValue >= 1000000) {
+        body.classList.add('portfolio-high');
+        totalValueEl.classList.add('portfolio-high');
+    }
+    
     const changeClass = totalChange24h >= 0 ? 'positive' : 'negative';
+    const sign = totalChange24h >= 0 ? '+' : '-';
     totalChangeEl.className = `portfolio-change ${changeClass}`;
-    totalChangeEl.textContent = `${totalChange24h >= 0 ? '+' : ''}$${Math.abs(totalChange24h).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})} (${totalChange24h >= 0 ? '+' : ''}${totalChangePercent.toFixed(2)}%)`;
+    totalChangeEl.textContent = `${sign}$${Math.abs(totalChange24h).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})} (${sign}${Math.abs(totalChangePercent).toFixed(2)}%)`;
+
+    const hasCompletePriceData = portfolio.every(coin => {
+        const price = priceData[coin.id]?.usd;
+        return typeof price === 'number' && Number.isFinite(price);
+    });
+
+    if (hasCompletePriceData) {
+        updatePortfolioRecords(totalValue);
+    }
+
+    updatePortfolioRecordsDisplay();
 }
 
 // Animate number changes like an old clock
@@ -738,6 +821,7 @@ function animateNumberChange(element, newValue) {
 
 // Update last updated timestamp
 function updateLastUpdated() {
+    if (!lastUpdatedEl) return;
     const now = new Date();
     lastUpdatedEl.textContent = now.toLocaleTimeString();
 }
@@ -816,6 +900,9 @@ async function addCoin() {
     updatePrices().catch(error => {
         console.error('Error updating prices after adding coin:', error);
         // Portfolio is already rendered, so user can see the coin even if price fetch fails
+        // Re-render to show the coin with "Loading..." state
+        renderPortfolio();
+        updateSummary();
     });
     
     closeModal();
@@ -965,6 +1052,29 @@ function loadPortfolio() {
 // Save portfolio to localStorage
 function savePortfolio() {
     localStorage.setItem('cryptoPortfolio', JSON.stringify(portfolio));
+}
+
+function loadPortfolioStats() {
+    try {
+        const stored = JSON.parse(localStorage.getItem('portfolioStats'));
+        if (stored && typeof stored === 'object') {
+            return {
+                highestValue: typeof stored.highestValue === 'number' ? stored.highestValue : null,
+                lowestValue: typeof stored.lowestValue === 'number' ? stored.lowestValue : null
+            };
+        }
+    } catch (error) {
+        console.error('Error loading portfolio stats:', error);
+    }
+    return { highestValue: null, lowestValue: null };
+}
+
+function savePortfolioStats() {
+    try {
+        localStorage.setItem('portfolioStats', JSON.stringify(portfolioStats));
+    } catch (error) {
+        console.error('Error saving portfolio stats:', error);
+    }
 }
 
 // Auto-refresh prices every 1 minute
