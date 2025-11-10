@@ -15,9 +15,16 @@ async function apiRequest(endpoint, options = {}) {
     // Build full URL
     const apiBase = getApiBase();
     let url = `${apiBase}/${endpoint}`;
-    // Ensure it's a proper URL (handle relative paths)
-    if (!url.startsWith('http')) {
-        url = window.location.origin + url;
+    
+    // Always use http/https, never file://
+    if (url.startsWith('file://') || !url.startsWith('http')) {
+        // If we're on file://, we can't make requests anyway, but construct proper URL
+        if (window.location.protocol === 'file:') {
+            console.error('Cannot make API requests from file:// protocol. Please use a web server.');
+            throw new Error('File protocol not supported. Use http://localhost:8000 or deploy to server.');
+        }
+        // Build proper URL
+        url = window.location.origin + (url.startsWith('/') ? url : '/' + url);
     }
     
     const defaultOptions = {
