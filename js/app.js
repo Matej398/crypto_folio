@@ -227,14 +227,12 @@ async function loadPortfolioFromServer() {
             
             // Always use server API usage data (server is source of truth, no local merging)
             // Update localStorage IMMEDIATELY so trackAPIUsage() uses correct data
-            if (Object.keys(serverApiUsage).length > 0) {
-                // Server has data, use it and update localStorage
-                localStorage.setItem('apiUsage', JSON.stringify(serverApiUsage));
-                console.log('Updated localStorage with server API usage:', serverApiUsage);
-            } else {
-                // Server has no data, clear local storage too
-                localStorage.setItem('apiUsage', JSON.stringify({}));
-            }
+            // Always overwrite localStorage with server data (even if empty) to clear stale cache
+            localStorage.setItem('apiUsage', JSON.stringify(serverApiUsage));
+            console.log('Updated localStorage with server API usage:', serverApiUsage);
+            
+            // Force update API stats display immediately with server data
+            updateAPIStats();
         } else {
             console.error('Server returned unsuccessful response:', result);
             // Fallback to localStorage
@@ -353,6 +351,8 @@ function updateAPIStats() {
         // Show as remaining/total format: 9,980/10,000 (countdown from 10000)
         const remaining = Math.max(0, COINGECKO_MONTHLY_LIMIT - usage.monthly);
         monthlyEl.textContent = `${remaining.toLocaleString('en-US')}/${COINGECKO_MONTHLY_LIMIT.toLocaleString('en-US')}`;
+        
+        console.log('API Stats updated - monthly used:', usage.monthly, 'remaining:', remaining);
         
         // Keep same grey color (no color coding)
         monthlyEl.style.color = '';
