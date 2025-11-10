@@ -2,9 +2,6 @@
 // Database configuration
 // Copy this file to config.php and update with your actual credentials
 
-// Database configuration
-// Copy this file to config.php and update with your actual credentials
-
 // For LOCAL development, use:
 // define('DB_USER', 'root');
 // define('DB_PASS', '');
