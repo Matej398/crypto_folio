@@ -27,7 +27,6 @@ A password-protected cryptocurrency portfolio tracker with server-side data stor
    ```bash
    php -S localhost:8000
    ```
-   Or double-click `START_SERVER.bat` (Windows)
 
 4. **Access:**
    - Open: `http://localhost:8000`
@@ -68,7 +67,9 @@ crypto_folio/
 │   ├── auth.php         # Authentication API
 │   ├── portfolio.php    # Portfolio CRUD API
 │   ├── config.example.php # Config template
-│   └── database.sql     # Database schema
+│   ├── database.sql     # Database schema
+│   ├── migration_add_api_usage.sql # Migration script (if needed)
+│   └── restore_all_data.sql # Restore script (for data recovery)
 ├── README.md
 └── .gitignore
 ```
