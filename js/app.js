@@ -218,6 +218,8 @@ async function loadPortfolioFromServer() {
                 };
                 // Save portfolio to server (API usage will be saved separately when tracking)
                 await savePortfolioToServer();
+                // Update portfolio records display to show timestamps
+                updatePortfolioRecordsDisplay();
                 // Keep localStorage as backup
                 return;
             }
@@ -227,6 +229,12 @@ async function loadPortfolioFromServer() {
             portfolioStats = serverStats;
             
             console.log('Using server data:', portfolio.length, 'coins');
+            console.log('Portfolio stats with timestamps:', {
+                highestValue: portfolioStats.highestValue,
+                highestValueTimestamp: portfolioStats.highestValueTimestamp,
+                lowestValue: portfolioStats.lowestValue,
+                lowestValueTimestamp: portfolioStats.lowestValueTimestamp
+            });
             
             // Always save server data to localStorage as backup (so it works offline too)
             localStorage.setItem('cryptoPortfolio', JSON.stringify(serverPortfolio));
@@ -240,6 +248,9 @@ async function loadPortfolioFromServer() {
             
             // Force update API stats display immediately with server data
             updateAPIStats();
+            
+            // Update portfolio records display to show timestamps
+            updatePortfolioRecordsDisplay();
         } else {
             console.error('Server returned unsuccessful response:', result);
             // Fallback to localStorage
@@ -1270,22 +1281,35 @@ function formatPortfolioRecord(value) {
 }
 
 function updatePortfolioRecordsDisplay() {
+    console.log('updatePortfolioRecordsDisplay called with stats:', {
+        highestValue: portfolioStats.highestValue,
+        highestValueTimestamp: portfolioStats.highestValueTimestamp,
+        lowestValue: portfolioStats.lowestValue,
+        lowestValueTimestamp: portfolioStats.lowestValueTimestamp
+    });
+    
     if (highestValueEl) {
         highestValueEl.textContent = formatPortfolioRecord(portfolioStats.highestValue);
         
         // Show timestamp icon and tooltip if timestamp exists
         const highestTimestampEl = document.getElementById('highestValueTimestamp');
-        if (highestTimestampEl && portfolioStats.highestValueTimestamp) {
-            const date = new Date(portfolioStats.highestValueTimestamp);
-            const formattedDate = date.toLocaleDateString('en-US', { 
-                year: 'numeric', 
-                month: '2-digit', 
-                day: '2-digit' 
-            });
-            highestTimestampEl.setAttribute('title', `Recorded on ${formattedDate}`);
-            highestTimestampEl.style.display = 'inline-block';
-        } else if (highestTimestampEl) {
-            highestTimestampEl.style.display = 'none';
+        if (highestTimestampEl) {
+            if (portfolioStats.highestValueTimestamp) {
+                const date = new Date(portfolioStats.highestValueTimestamp);
+                const formattedDate = date.toLocaleDateString('en-US', { 
+                    year: 'numeric', 
+                    month: '2-digit', 
+                    day: '2-digit' 
+                });
+                highestTimestampEl.setAttribute('title', `Recorded on ${formattedDate}`);
+                highestTimestampEl.style.display = 'inline-block';
+                console.log('Showing highest timestamp icon with date:', formattedDate);
+            } else {
+                highestTimestampEl.style.display = 'none';
+                console.log('Hiding highest timestamp icon (no timestamp)');
+            }
+        } else {
+            console.log('highestValueTimestamp element not found');
         }
     }
     if (lowestValueEl) {
@@ -1293,17 +1317,23 @@ function updatePortfolioRecordsDisplay() {
         
         // Show timestamp icon and tooltip if timestamp exists
         const lowestTimestampEl = document.getElementById('lowestValueTimestamp');
-        if (lowestTimestampEl && portfolioStats.lowestValueTimestamp) {
-            const date = new Date(portfolioStats.lowestValueTimestamp);
-            const formattedDate = date.toLocaleDateString('en-US', { 
-                year: 'numeric', 
-                month: '2-digit', 
-                day: '2-digit' 
-            });
-            lowestTimestampEl.setAttribute('title', `Recorded on ${formattedDate}`);
-            lowestTimestampEl.style.display = 'inline-block';
-        } else if (lowestTimestampEl) {
-            lowestTimestampEl.style.display = 'none';
+        if (lowestTimestampEl) {
+            if (portfolioStats.lowestValueTimestamp) {
+                const date = new Date(portfolioStats.lowestValueTimestamp);
+                const formattedDate = date.toLocaleDateString('en-US', { 
+                    year: 'numeric', 
+                    month: '2-digit', 
+                    day: '2-digit' 
+                });
+                lowestTimestampEl.setAttribute('title', `Recorded on ${formattedDate}`);
+                lowestTimestampEl.style.display = 'inline-block';
+                console.log('Showing lowest timestamp icon with date:', formattedDate);
+            } else {
+                lowestTimestampEl.style.display = 'none';
+                console.log('Hiding lowest timestamp icon (no timestamp)');
+            }
+        } else {
+            console.log('lowestValueTimestamp element not found');
         }
     }
 }
