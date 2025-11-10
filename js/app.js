@@ -591,6 +591,10 @@ function setupEventListeners() {
             showAuthStatus('Signed in successfully!', 'success');
             await loadPortfolioFromServer();
             
+            // Wait a moment to ensure localStorage is updated before fetching prices
+            // This prevents trackAPIUsage() from reading empty localStorage
+            await new Promise(resolve => setTimeout(resolve, 100));
+            
             // Start fetching prices immediately (don't wait)
             if (portfolio.length > 0) {
                 updatePrices().catch(error => {
