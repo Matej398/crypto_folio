@@ -37,11 +37,18 @@ if ($method === 'POST') {
                 
                 $userId = $pdo->lastInsertId();
                 
-                // Initialize empty portfolio
-                $stmt = $pdo->prepare("INSERT INTO portfolios (user_id, portfolio_data, stats_data) VALUES (?, ?, ?)");
+                // Initialize empty portfolio - try with api_usage_data, fallback if column doesn't exist
                 $emptyPortfolio = json_encode([]);
                 $emptyStats = json_encode(['highestValue' => null, 'lowestValue' => null]);
-                $stmt->execute([$userId, $emptyPortfolio, $emptyStats]);
+                try {
+                    $emptyApiUsage = json_encode([]);
+                    $stmt = $pdo->prepare("INSERT INTO portfolios (user_id, portfolio_data, stats_data, api_usage_data) VALUES (?, ?, ?, ?)");
+                    $stmt->execute([$userId, $emptyPortfolio, $emptyStats, $emptyApiUsage]);
+                } catch (PDOException $e) {
+                    // Column doesn't exist, insert without it
+                    $stmt = $pdo->prepare("INSERT INTO portfolios (user_id, portfolio_data, stats_data) VALUES (?, ?, ?)");
+                    $stmt->execute([$userId, $emptyPortfolio, $emptyStats]);
+                }
                 
                 $user = [
                     'id' => $userId,
