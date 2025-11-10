@@ -209,14 +209,8 @@ async function loadPortfolioFromServer() {
                     highestValue: localStats.highestValue || null,
                     lowestValue: localStats.lowestValue || null
                 };
-                // Migrate API usage if server is empty
-                if (Object.keys(serverApiUsage).length === 0 && Object.keys(localApiUsage).length > 0) {
-                    // Merge local API usage into server
-                    const mergedApiUsage = { ...serverApiUsage, ...localApiUsage };
-                    await savePortfolioToServer(mergedApiUsage, null, null);
-                } else {
-                    await savePortfolioToServer();
-                }
+                // Save portfolio to server (API usage will be saved separately when tracking)
+                await savePortfolioToServer();
                 // Keep localStorage as backup
                 return;
             }
@@ -231,16 +225,13 @@ async function loadPortfolioFromServer() {
             localStorage.setItem('cryptoPortfolio', JSON.stringify(serverPortfolio));
             localStorage.setItem('portfolioStats', JSON.stringify(serverStats));
             
-            // Migrate API usage from localStorage if server is empty but localStorage has data
-            if (Object.keys(serverApiUsage).length === 0 && Object.keys(localApiUsage).length > 0) {
-                console.log('Migrating API usage from localStorage to server...');
-                const mergedApiUsage = { ...serverApiUsage, ...localApiUsage };
-                await savePortfolioToServer(mergedApiUsage, null, null);
-                // Update localStorage with merged data
-                localStorage.setItem('apiUsage', JSON.stringify(mergedApiUsage));
-            } else if (Object.keys(serverApiUsage).length > 0) {
+            // Always use server API usage data (server is source of truth, no local merging)
+            if (Object.keys(serverApiUsage).length > 0) {
                 // Server has data, use it and update localStorage
                 localStorage.setItem('apiUsage', JSON.stringify(serverApiUsage));
+            } else {
+                // Server has no data, clear local storage too
+                localStorage.setItem('apiUsage', JSON.stringify({}));
             }
         } else {
             console.error('Server returned unsuccessful response:', result);
@@ -426,6 +417,14 @@ async function init() {
         document.body.classList.remove('modal-open');
         await loadPortfolioFromServer();
         updateUserUI();
+        
+        // Start fetching prices immediately in parallel (don't wait)
+        if (portfolio.length > 0) {
+            // Fetch prices immediately while we continue with other initialization
+            updatePrices().catch(error => {
+                console.error('Error updating prices on init:', error);
+            });
+        }
     } else {
         // User not authenticated - show modal and lock scrolling
         document.body.classList.add('modal-open');
@@ -445,11 +444,10 @@ async function init() {
     renderPortfolio();
     updateSummary();
     
-    // Then fetch fresh prices (don't block rendering)
-    if (portfolio.length > 0) {
+    // If prices haven't been fetched yet (non-authenticated), fetch them now
+    if (!authenticated && portfolio.length > 0) {
         updatePrices().catch(error => {
             console.error('Error updating prices on init:', error);
-            // Portfolio is already rendered, so it will show with "Loading..." states
         });
     }
     
