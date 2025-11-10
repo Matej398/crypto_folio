@@ -826,7 +826,7 @@ body.modal-open {
 /* Responsive */
 @media (max-width: 768px) {
     body {
-        padding: 20px 12px 240px;
+        padding: 70px 12px 240px 12px;
     }
 
     .summary-grid {
@@ -844,23 +844,30 @@ body.modal-open {
     }
 
     .header h1 {
-        font-size: 1.3rem;
+        font-size: 1.2rem;
         left: 12px;
-        top: 20px;
+        top: 12px;
     }
 
     .header .add-btn {
         right: 12px;
-        top: 20px;
+        top: 12px;
+        padding: 8px 16px;
+        font-size: 0.65rem;
     }
 
     .header .user-menu {
-        right: 130px;
-        top: 20px;
+        right: 100px;
+        top: 12px;
+    }
+
+    .user-menu-btn {
+        padding: 8px 14px;
+        font-size: 0.65rem;
     }
 
     .summary-card {
-        padding: 24px;
+        padding: 24px 0;
     }
 
     .portfolio-value {
@@ -871,11 +878,6 @@ body.modal-open {
         flex-direction: column;
         align-items: flex-start;
         gap: 12px;
-    }
-
-    .add-btn {
-        width: 100%;
-        justify-content: center;
     }
 
     .portfolio-grid {
@@ -916,30 +918,37 @@ body.modal-open {
 
 @media (max-width: 480px) {
     body {
-        padding: 70px 10px 260px 10px;
+        padding: 65px 10px 260px 10px;
     }
 
     .header h1 {
-        font-size: 1.2rem;
+        font-size: 1.1rem;
         left: 10px;
-        top: 20px;
+        top: 10px;
     }
 
     .header .add-btn {
         right: 10px;
-        top: 20px;
-        padding: 10px 18px;
-        font-size: 0.65rem;
+        top: 10px;
+        padding: 8px 14px;
+        font-size: 0.6rem;
     }
 
     .header .user-menu {
-        right: 110px;
-        top: 20px;
+        right: 85px;
+        top: 10px;
     }
 
     .user-menu-btn {
-        padding: 10px 18px;
-        font-size: 0.65rem;
+        padding: 8px 12px;
+        font-size: 0.6rem;
+    }
+
+    .user-menu-btn span {
+        max-width: 80px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
     }
 
     .portfolio-value {
