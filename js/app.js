@@ -178,16 +178,23 @@ async function changePassword(currentPwd, newPwd) {
 // Portfolio API Functions
 async function loadPortfolioFromServer() {
     if (!isAuthenticated) {
+        console.log('Not authenticated, loading from localStorage only');
         portfolio = JSON.parse(localStorage.getItem('cryptoPortfolio')) || [];
         return;
     }
     
     try {
+        console.log('Loading portfolio from server...');
         const result = await apiRequest('portfolio.php');
+        console.log('Server response:', result);
+        
         if (result.success) {
             const serverPortfolio = result.portfolio || [];
             const serverStats = result.stats || { highestValue: null, lowestValue: null };
             const serverApiUsage = result.apiUsage || {};
+            
+            console.log('Server portfolio:', serverPortfolio.length, 'coins');
+            console.log('Server stats:', serverStats);
             
             // Check if server has empty portfolio but localStorage has data
             const localPortfolio = JSON.parse(localStorage.getItem('cryptoPortfolio')) || [];
@@ -214,11 +221,11 @@ async function loadPortfolioFromServer() {
                 return;
             }
             
-            // Use server data
+            // Use server data (even if empty - this is the source of truth)
             portfolio = serverPortfolio;
             portfolioStats = serverStats;
             
-            console.log('Loaded portfolio from server:', serverPortfolio.length, 'coins');
+            console.log('Using server data:', portfolio.length, 'coins');
             
             // Always save server data to localStorage as backup (so it works offline too)
             localStorage.setItem('cryptoPortfolio', JSON.stringify(serverPortfolio));
@@ -235,9 +242,14 @@ async function loadPortfolioFromServer() {
                 // Server has data, use it and update localStorage
                 localStorage.setItem('apiUsage', JSON.stringify(serverApiUsage));
             }
+        } else {
+            console.error('Server returned unsuccessful response:', result);
+            // Fallback to localStorage
+            portfolio = JSON.parse(localStorage.getItem('cryptoPortfolio')) || [];
         }
     } catch (error) {
-        console.error('Error loading portfolio:', error);
+        console.error('Error loading portfolio from server:', error);
+        console.error('Error details:', error.message, error.stack);
         // Fallback to localStorage
         portfolio = JSON.parse(localStorage.getItem('cryptoPortfolio')) || [];
     }
@@ -245,6 +257,7 @@ async function loadPortfolioFromServer() {
 
 async function savePortfolioToServer(apiUsageOverride = null, portfolioOverride = null, statsOverride = null) {
     if (!isAuthenticated) {
+        console.log('Not authenticated, saving to localStorage only');
         // Fallback to localStorage
         localStorage.setItem('cryptoPortfolio', JSON.stringify(portfolio));
         return;
@@ -256,7 +269,9 @@ async function savePortfolioToServer(apiUsageOverride = null, portfolioOverride 
         const portfolioToSave = portfolioOverride || portfolio;
         const statsToSave = statsOverride || portfolioStats;
         
-        await apiRequest('portfolio.php', {
+        console.log('Saving portfolio to server:', portfolioToSave.length, 'coins');
+        
+        const result = await apiRequest('portfolio.php', {
             method: 'POST',
             body: JSON.stringify({
                 portfolio: portfolioToSave,
@@ -264,8 +279,11 @@ async function savePortfolioToServer(apiUsageOverride = null, portfolioOverride 
                 apiUsage: currentApiUsage,
             }),
         });
+        
+        console.log('Portfolio saved successfully:', result);
     } catch (error) {
-        console.error('Error saving portfolio:', error);
+        console.error('Error saving portfolio to server:', error);
+        console.error('Error details:', error.message);
         // Fallback to localStorage
         localStorage.setItem('cryptoPortfolio', JSON.stringify(portfolio));
     }
