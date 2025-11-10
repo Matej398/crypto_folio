@@ -236,6 +236,14 @@ async function loadPortfolioFromServer() {
                 lowestValueTimestamp: portfolioStats.lowestValueTimestamp
             });
             
+            // Debug: Check if timestamps are missing
+            if (!portfolioStats.highestValueTimestamp && portfolioStats.highestValue) {
+                console.warn('⚠️ highestValue exists but no timestamp! Run the SQL script to add timestamps.');
+            }
+            if (!portfolioStats.lowestValueTimestamp && portfolioStats.lowestValue) {
+                console.warn('⚠️ lowestValue exists but no timestamp! Run the SQL script to add timestamps.');
+            }
+            
             // Always save server data to localStorage as backup (so it works offline too)
             localStorage.setItem('cryptoPortfolio', JSON.stringify(serverPortfolio));
             localStorage.setItem('portfolioStats', JSON.stringify(serverStats));
