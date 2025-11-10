@@ -423,6 +423,10 @@ async function init() {
         await loadPortfolioFromServer();
         updateUserUI();
         
+        // Wait a moment to ensure localStorage is updated before fetching prices
+        // This prevents trackAPIUsage() from reading empty localStorage
+        await new Promise(resolve => setTimeout(resolve, 100));
+        
         // Start fetching prices immediately in parallel (don't wait)
         if (portfolio.length > 0) {
             // Fetch prices immediately while we continue with other initialization
