@@ -974,7 +974,7 @@ body.modal-open {
     font-weight: 400;
     letter-spacing: 0.1em;
     text-transform: none;
-    border-radius: 8px;
+    border-radius: 12px;
     cursor: pointer;
     transition: all 0.2s ease;
     display: flex;
