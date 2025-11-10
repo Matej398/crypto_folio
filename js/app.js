@@ -440,7 +440,7 @@ const signOutBtn = document.getElementById('signOutBtn');
 const authError = document.getElementById('authError');
 const authStatus = document.getElementById('authStatus');
 const userInfo = document.getElementById('userInfo');
-const userEmail = document.getElementById('userEmail');
+const userName = document.getElementById('userName');
 const changePasswordBtn = document.getElementById('changePasswordBtn');
 const changePasswordModal = document.getElementById('changePasswordModal');
 const changePasswordCloseBtn = document.getElementById('changePasswordCloseBtn');
@@ -807,8 +807,8 @@ function showChangePasswordStatus(message, type) {
 
 function updateUserUI() {
     if (isAuthenticated && currentUser) {
-        if (userInfo) userInfo.style.display = 'flex';
-        if (userEmail) userEmail.textContent = currentUser.email;
+        if (userInfo) userInfo.style.display = 'block';
+        // User name is already set to "Blecky398" in HTML
         if (authModal) authModal.classList.add('hidden');
         if (addCoinBtn) addCoinBtn.style.display = 'block';
         // Remove scroll lock
