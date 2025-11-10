@@ -414,9 +414,16 @@ function setupEventListeners() {
     
     // Auth event listeners
     if (signInBtn) {
-        signInBtn.addEventListener('click', async () => {
+        console.log('Sign in button found, attaching listener');
+        signInBtn.addEventListener('click', async (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            console.log('Sign in button clicked!');
+            
             const email = authEmail?.value.trim();
             const password = authPassword?.value;
+            
+            console.log('Email:', email, 'Password length:', password?.length);
             
             if (!email || !password) {
                 showAuthError('Please enter email and password');
@@ -424,6 +431,7 @@ function setupEventListeners() {
             }
             
             showAuthStatus('Signing in...', 'loading');
+            console.log('Calling signIn function...');
             const result = await signIn(email, password);
             
             if (result.success) {
