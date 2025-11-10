@@ -326,6 +326,8 @@ let refreshInterval;
 let countdownInterval;
 let countdownSeconds = 60;
 let isTabVisible = true;
+let recordUpdateTimeout = null;
+const RECORD_UPDATE_DELAY = 5 * 60 * 1000; // 5 minutes in milliseconds
 let portfolioStats = { 
     highestValue: null, 
     lowestValue: null,
@@ -1358,27 +1360,72 @@ function updatePortfolioRecordsDisplay() {
     }
 }
 
+// Schedule portfolio record update after delay (to allow time to correct mistakes)
+function scheduleRecordUpdate() {
+    // Clear any existing timeout
+    if (recordUpdateTimeout) {
+        clearTimeout(recordUpdateTimeout);
+        recordUpdateTimeout = null;
+    }
+    
+    // Don't update records if portfolio is empty
+    if (portfolio.length === 0) {
+        console.log('Portfolio is empty. Skipping record update.');
+        return;
+    }
+    
+    // Calculate current portfolio value
+    const currentValue = portfolio.reduce((sum, coin) => {
+        const price = priceData[coin.id]?.usd || 0;
+        return sum + (price * coin.quantity);
+    }, 0);
+    
+    if (typeof currentValue !== 'number' || !Number.isFinite(currentValue) || currentValue <= 0) {
+        return;
+    }
+    
+    console.log(`Portfolio changed. Will update records in ${RECORD_UPDATE_DELAY / 1000 / 60} minutes if value remains stable...`);
+    
+    // Set timeout to update records after delay
+    recordUpdateTimeout = setTimeout(() => {
+        updatePortfolioRecords(currentValue);
+        recordUpdateTimeout = null;
+    }, RECORD_UPDATE_DELAY);
+}
+
+// Actually update portfolio records (called after delay)
 function updatePortfolioRecords(currentValue) {
-    if (typeof currentValue !== 'number' || !Number.isFinite(currentValue)) {
+    // Don't update records if portfolio is empty (to avoid $0 lowest value)
+    if (portfolio.length === 0) {
+        console.log('Portfolio is empty. Skipping record update.');
+        return;
+    }
+    
+    if (typeof currentValue !== 'number' || !Number.isFinite(currentValue) || currentValue <= 0) {
         return;
     }
 
     let shouldSave = false;
 
+    // Check for highest value
     if (portfolioStats.highestValue === null || currentValue > portfolioStats.highestValue) {
         portfolioStats.highestValue = currentValue;
         portfolioStats.highestValueTimestamp = new Date().toISOString();
         shouldSave = true;
+        console.log(`✅ New highest portfolio value recorded: $${currentValue.toLocaleString()}`);
     }
 
+    // Check for lowest value
     if (portfolioStats.lowestValue === null || currentValue < portfolioStats.lowestValue) {
         portfolioStats.lowestValue = currentValue;
         portfolioStats.lowestValueTimestamp = new Date().toISOString();
         shouldSave = true;
+        console.log(`✅ New lowest portfolio value recorded: $${currentValue.toLocaleString()}`);
     }
 
     if (shouldSave) {
         savePortfolioStats();
+        updatePortfolioRecordsDisplay();
     }
 }
 
@@ -1441,10 +1488,6 @@ function updateSummary() {
         const price = priceData[coin.id]?.usd;
         return typeof price === 'number' && Number.isFinite(price);
     });
-
-    if (hasCompletePriceData) {
-        updatePortfolioRecords(totalValue);
-    }
 
     updatePortfolioRecordsDisplay();
 }
@@ -1567,6 +1610,9 @@ async function addCoin() {
     
     // Render portfolio immediately so coin appears right away
     renderPortfolio();
+    
+    // Schedule record update after delay (gives time to correct mistakes)
+    scheduleRecordUpdate();
     updateSummary();
     
     // Then fetch fresh prices (don't await to avoid blocking UI)
@@ -1651,6 +1697,9 @@ function updateCoin() {
     renderPortfolio();
     updateSummary();
     
+    // Schedule record update after delay (gives time to correct mistakes)
+    scheduleRecordUpdate();
+    
     // Update prices to reflect new quantity
     updatePrices().catch(error => {
         console.error('Error updating prices after editing coin:', error);
@@ -1669,6 +1718,10 @@ function removeCoinFromEdit() {
     savePortfolio();
     renderPortfolio();
     updateSummary();
+    
+    // Schedule record update after delay (gives time to correct mistakes)
+    scheduleRecordUpdate();
+    
     closeEditModal();
 }
 
