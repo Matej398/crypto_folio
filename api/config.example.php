@@ -10,10 +10,11 @@ define('DB_PASS', '');
 define('DB_CHARSET', 'utf8mb4');
 
 // SERVER PRODUCTION (update these for Hostinger)
+// Uncomment and update these for your server:
 // define('DB_HOST', 'localhost');
-// define('DB_NAME', 'your_hostinger_db_name');
-// define('DB_USER', 'your_hostinger_db_user');
-// define('DB_PASS', 'your_hostinger_db_password');
+// define('DB_NAME', 'crypto_portfolio');
+// define('DB_USER', 'crypto_portfolio');  // Your database user (NOT 'root')
+// define('DB_PASS', 'your_password_here'); // Your database password
 // define('DB_CHARSET', 'utf8mb4');
 
 // Create database connection
