@@ -500,7 +500,16 @@ function setupEventListeners() {
     
     // Auth event listeners
     const handleSignIn = async () => {
-        const password = authPassword?.value;
+        // Try to use saved password first, otherwise use input value
+        let password = authPassword?.value;
+        
+        // If password field is empty, try to use saved password
+        if (!password || password.trim() === '') {
+            const savedPassword = getPasswordFromStorage();
+            if (savedPassword) {
+                password = savedPassword;
+            }
+        }
         
         if (!password) {
             showAuthError('Please enter your password');
@@ -680,18 +689,16 @@ function updateUserUI() {
         if (addCoinBtn) addCoinBtn.style.display = 'block';
         // Remove scroll lock
         document.body.classList.remove('modal-open');
+        // Clear password field for security
+        if (authPassword) authPassword.value = '';
     } else {
         if (userInfo) userInfo.style.display = 'none';
         if (authModal) authModal.classList.remove('hidden');
         if (addCoinBtn) addCoinBtn.style.display = 'none';
         // Lock scrolling
         document.body.classList.add('modal-open');
-        
-        // Load saved password if available
-        const savedPassword = getPasswordFromStorage();
-        if (savedPassword && authPassword) {
-            authPassword.value = savedPassword;
-        }
+        // Don't auto-fill password for security - user must type it
+        if (authPassword) authPassword.value = '';
     }
 }
 

@@ -138,24 +138,24 @@ if ($method === 'POST') {
         session_destroy();
         echo json_encode(['success' => true]);
         
-    } elseif ($action === 'check') {
-        // Check if user is logged in
-        session_start();
-        if (isset($_SESSION['user_id'])) {
-            echo json_encode([
-                'success' => true,
-                'user' => [
-                    'id' => $_SESSION['user_id'],
-                    'email' => $_SESSION['email']
-                ]
-            ]);
-        } else {
-            http_response_code(401);
-            echo json_encode(['success' => false, 'error' => 'Not authenticated']);
-        }
     } else {
         http_response_code(400);
         echo json_encode(['success' => false, 'error' => 'Invalid action']);
+    }
+} elseif ($method === 'GET' && $action === 'check') {
+    // Check if user is logged in (GET request)
+    session_start();
+    if (isset($_SESSION['user_id'])) {
+        echo json_encode([
+            'success' => true,
+            'user' => [
+                'id' => $_SESSION['user_id'],
+                'email' => $_SESSION['email']
+            ]
+        ]);
+    } else {
+        http_response_code(401);
+        echo json_encode(['success' => false, 'error' => 'Not authenticated']);
     }
 } else {
     http_response_code(405);
