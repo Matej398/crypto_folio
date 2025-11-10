@@ -218,6 +218,12 @@ async function loadPortfolioFromServer() {
             portfolio = serverPortfolio;
             portfolioStats = serverStats;
             
+            console.log('Loaded portfolio from server:', serverPortfolio.length, 'coins');
+            
+            // Always save server data to localStorage as backup (so it works offline too)
+            localStorage.setItem('cryptoPortfolio', JSON.stringify(serverPortfolio));
+            localStorage.setItem('portfolioStats', JSON.stringify(serverStats));
+            
             // Migrate API usage from localStorage if server is empty but localStorage has data
             if (Object.keys(serverApiUsage).length === 0 && Object.keys(localApiUsage).length > 0) {
                 console.log('Migrating API usage from localStorage to server...');

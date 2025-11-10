@@ -29,6 +29,4 @@ CREATE TABLE IF NOT EXISTS portfolios (
     INDEX idx_user_id (user_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- Migration: Add api_usage_data column if it doesn't exist (for existing databases)
-ALTER TABLE portfolios ADD COLUMN IF NOT EXISTS api_usage_data JSON DEFAULT NULL;
 
