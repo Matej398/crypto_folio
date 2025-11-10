@@ -327,8 +327,11 @@ function trackAPIUsage() {
     const today = new Date().toDateString();
     const usage = getAPIUsage();
     
+    // Increment today's count
     usage.raw[today] = (usage.raw[today] || 0) + 1;
     localStorage.setItem('apiUsage', JSON.stringify(usage.raw));
+    
+    console.log('Tracked API usage - today:', today, 'count:', usage.raw[today], 'monthly total:', usage.monthly + 1);
     
     // Also save to server if authenticated
     if (isAuthenticated) {
