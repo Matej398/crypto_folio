@@ -496,14 +496,113 @@ function setupEventListeners() {
         });
     }
     
-    // Close auth modal on Escape (only if logged in)
+    // Change password modal
+    if (changePasswordBtn) {
+        changePasswordBtn.addEventListener('click', () => {
+            changePasswordModal?.classList.remove('hidden');
+            if (currentPassword) currentPassword.value = '';
+            if (newPassword) newPassword.value = '';
+            if (confirmNewPassword) confirmNewPassword.value = '';
+            if (changePasswordError) changePasswordError.style.display = 'none';
+            if (changePasswordStatus) changePasswordStatus.style.display = 'none';
+        });
+    }
+    
+    if (changePasswordCloseBtn) {
+        changePasswordCloseBtn.addEventListener('click', closeChangePasswordModal);
+    }
+    
+    if (changePasswordCancelBtn) {
+        changePasswordCancelBtn.addEventListener('click', closeChangePasswordModal);
+    }
+    
+    if (changePasswordSubmitBtn) {
+        changePasswordSubmitBtn.addEventListener('click', async () => {
+            const currentPwd = currentPassword?.value || '';
+            const newPwd = newPassword?.value || '';
+            const confirmPwd = confirmNewPassword?.value || '';
+            
+            if (!currentPwd || !newPwd || !confirmPwd) {
+                showChangePasswordError('All fields are required');
+                return;
+            }
+            
+            if (newPwd.length < 6) {
+                showChangePasswordError('New password must be at least 6 characters');
+                return;
+            }
+            
+            if (newPwd !== confirmPwd) {
+                showChangePasswordError('New passwords do not match');
+                return;
+            }
+            
+            showChangePasswordStatus('Changing password...', 'loading');
+            const result = await changePassword(currentPwd, newPwd);
+            
+            if (result.success) {
+                showChangePasswordStatus('Password changed successfully!', 'success');
+                setTimeout(() => {
+                    closeChangePasswordModal();
+                }, 1500);
+            } else {
+                showChangePasswordError(result.error || 'Failed to change password');
+            }
+        });
+    }
+    
+    // Close modals on Escape
     document.addEventListener('keydown', (e) => {
-        if (e.key === 'Escape' && authModal && !authModal.classList.contains('hidden')) {
-            if (isAuthenticated) {
+        if (e.key === 'Escape') {
+            if (authModal && !authModal.classList.contains('hidden') && isAuthenticated) {
                 authModal.classList.add('hidden');
+            }
+            if (changePasswordModal && !changePasswordModal.classList.contains('hidden')) {
+                closeChangePasswordModal();
             }
         }
     });
+    
+    // Close change password modal on outside click
+    if (changePasswordModal) {
+        changePasswordModal.addEventListener('click', (e) => {
+            if (e.target === changePasswordModal) {
+                closeChangePasswordModal();
+            }
+        });
+    }
+}
+
+function closeChangePasswordModal() {
+    if (changePasswordModal) {
+        changePasswordModal.classList.add('hidden');
+    }
+    if (currentPassword) currentPassword.value = '';
+    if (newPassword) newPassword.value = '';
+    if (confirmNewPassword) confirmNewPassword.value = '';
+    if (changePasswordError) changePasswordError.style.display = 'none';
+    if (changePasswordStatus) changePasswordStatus.style.display = 'none';
+}
+
+function showChangePasswordError(message) {
+    if (changePasswordError) {
+        changePasswordError.textContent = message;
+        changePasswordError.style.display = 'block';
+    }
+    if (changePasswordStatus) {
+        changePasswordStatus.style.display = 'none';
+    }
+}
+
+function showChangePasswordStatus(message, type) {
+    if (changePasswordStatus) {
+        changePasswordStatus.textContent = message;
+        changePasswordStatus.className = `auth-status ${type}`;
+        changePasswordStatus.style.display = 'block';
+    }
+    if (changePasswordError) {
+        changePasswordError.style.display = 'none';
+    }
 }
 
 function updateUserUI() {
