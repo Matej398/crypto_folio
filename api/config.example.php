@@ -34,11 +34,20 @@ function getDBConnection() {
     }
 }
 
-// Set JSON header
+// Configure session settings for persistence
+ini_set('session.cookie_lifetime', 86400 * 7); // 7 days
+ini_set('session.gc_maxlifetime', 86400 * 7); // 7 days
+ini_set('session.cookie_httponly', 1);
+ini_set('session.cookie_samesite', 'Lax');
+
+// Set JSON header with CORS support
 header('Content-Type: application/json');
-header('Access-Control-Allow-Origin: *');
+// Allow credentials - use specific origin or get from request
+$origin = $_SERVER['HTTP_ORIGIN'] ?? '*';
+header('Access-Control-Allow-Origin: ' . $origin);
 header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS');
 header('Access-Control-Allow-Headers: Content-Type, Authorization');
+header('Access-Control-Allow-Credentials: true');
 
 // Handle preflight requests
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
