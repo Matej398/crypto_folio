@@ -77,7 +77,7 @@ body.portfolio-high {
 
 .header .user-menu {
     position: fixed;
-    right: 60px;
+    right: 150px;
     top: 24px;
     z-index: 50;
 }
@@ -285,20 +285,27 @@ body.portfolio-high {
     background: #ffffff;
     color: #111111;
     border: 1px solid rgba(209, 213, 219, 0.9);
-    padding: 10px;
+    padding: 10px 20px;
     font-family: 'Space Mono', monospace;
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
     border-radius: 12px;
     cursor: pointer;
     transition: background 0.2s ease, border-color 0.2s ease, color 0.2s ease;
     box-shadow: none;
     display: flex;
     align-items: center;
-    justify-content: center;
-    width: 38px;
-    height: 38px;
+    gap: 8px;
 }
 
-.add-btn svg {
+.add-btn-text {
+    display: inline;
+}
+
+.add-btn-icon {
+    display: none;
     width: 18px;
     height: 18px;
 }
@@ -860,14 +867,20 @@ body.modal-open {
     .header .add-btn {
         right: 12px;
         top: 12px;
-        width: 34px;
-        height: 34px;
-        padding: 8px;
+        width: 38px;
+        height: 38px;
+        padding: 10px;
+        justify-content: center;
     }
 
-    .header .add-btn svg {
-        width: 16px;
-        height: 16px;
+    .add-btn-text {
+        display: none;
+    }
+
+    .add-btn-icon {
+        display: block;
+        width: 18px;
+        height: 18px;
     }
 
     .header .user-menu {
@@ -875,26 +888,21 @@ body.modal-open {
         top: 12px;
     }
 
+    .user-menu-text {
+        display: none;
+    }
+
+    .user-menu-icon {
+        display: block;
+        width: 18px;
+        height: 18px;
+    }
+
     .user-menu-btn {
-        width: 34px;
-        height: 34px;
-        padding: 8px;
-    }
-
-    .user-menu-btn svg {
-        width: 16px;
-        height: 16px;
-    }
-
-    .add-btn {
-        width: 34px;
-        height: 34px;
-        padding: 8px;
-    }
-
-    .add-btn svg {
-        width: 16px;
-        height: 16px;
+        width: 38px;
+        height: 38px;
+        padding: 10px;
+        justify-content: center;
     }
 
     .summary-card {
@@ -961,41 +969,40 @@ body.modal-open {
     .header .add-btn {
         right: 10px;
         top: 10px;
-        width: 32px;
-        height: 32px;
-        padding: 7px;
+        width: 38px;
+        height: 38px;
+        padding: 10px;
     }
 
-    .header .add-btn svg {
-        width: 14px;
-        height: 14px;
+    .add-btn-icon {
+        width: 18px;
+        height: 18px;
     }
 
     .header .user-menu {
-        right: 50px;
+        right: 55px;
         top: 10px;
     }
 
     .user-menu-btn {
-        width: 32px;
-        height: 32px;
-        padding: 7px;
+        width: 38px;
+        height: 38px;
+        padding: 10px;
     }
 
-    .user-menu-btn svg {
-        width: 14px;
-        height: 14px;
+    .user-menu-icon {
+        width: 18px;
+        height: 18px;
     }
 
-    .add-btn {
-        width: 32px;
-        height: 32px;
-        padding: 7px;
+    .add-btn-text {
+        display: none;
     }
 
-    .add-btn svg {
-        width: 14px;
-        height: 14px;
+    .add-btn-icon {
+        display: block;
+        width: 18px;
+        height: 18px;
     }
 
     .portfolio-value {
@@ -1024,19 +1031,26 @@ body.modal-open {
     background: #1c1c1f;
     color: var(--text-primary);
     border: 1px solid rgba(70, 70, 78, 0.5);
-    padding: 10px;
+    padding: 10px 20px;
     font-family: 'Space Mono', monospace;
+    font-size: 0.7rem;
+    font-weight: 400;
+    letter-spacing: 0.1em;
+    text-transform: none;
     border-radius: 12px;
     cursor: pointer;
     transition: all 0.2s ease;
     display: flex;
     align-items: center;
-    justify-content: center;
-    width: 38px;
-    height: 38px;
+    gap: 8px;
 }
 
-.user-menu-btn svg {
+.user-menu-text {
+    display: inline;
+}
+
+.user-menu-icon {
+    display: none;
     width: 18px;
     height: 18px;
 }
