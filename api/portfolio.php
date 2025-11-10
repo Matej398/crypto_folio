@@ -16,25 +16,46 @@ try {
     $pdo = getDBConnection();
     
     if ($method === 'GET') {
-        // Get user's portfolio
-        $stmt = $pdo->prepare("SELECT portfolio_data, stats_data, api_usage_data FROM portfolios WHERE user_id = ?");
-        $stmt->execute([$userId]);
-        $portfolio = $stmt->fetch();
+        // Get user's portfolio - try with api_usage_data first, fallback if column doesn't exist
+        try {
+            $stmt = $pdo->prepare("SELECT portfolio_data, stats_data, api_usage_data FROM portfolios WHERE user_id = ?");
+            $stmt->execute([$userId]);
+            $portfolio = $stmt->fetch();
+            $hasApiUsageColumn = true;
+        } catch (PDOException $e) {
+            // Column doesn't exist, try without it
+            $stmt = $pdo->prepare("SELECT portfolio_data, stats_data FROM portfolios WHERE user_id = ?");
+            $stmt->execute([$userId]);
+            $portfolio = $stmt->fetch();
+            $hasApiUsageColumn = false;
+        }
         
         if ($portfolio) {
+            $apiUsage = [];
+            if ($hasApiUsageColumn && isset($portfolio['api_usage_data'])) {
+                $apiUsage = json_decode($portfolio['api_usage_data'], true) ?? [];
+            }
+            
             echo json_encode([
                 'success' => true,
                 'portfolio' => json_decode($portfolio['portfolio_data'], true) ?? [],
                 'stats' => json_decode($portfolio['stats_data'], true) ?? ['highestValue' => null, 'lowestValue' => null],
-                'apiUsage' => json_decode($portfolio['api_usage_data'], true) ?? []
+                'apiUsage' => $apiUsage
             ]);
         } else {
-            // Initialize if doesn't exist
+            // Initialize if doesn't exist - try with api_usage_data, fallback if column doesn't exist
             $emptyPortfolio = json_encode([]);
             $emptyStats = json_encode(['highestValue' => null, 'lowestValue' => null]);
-            $emptyApiUsage = json_encode([]);
-            $stmt = $pdo->prepare("INSERT INTO portfolios (user_id, portfolio_data, stats_data, api_usage_data) VALUES (?, ?, ?, ?)");
-            $stmt->execute([$userId, $emptyPortfolio, $emptyStats, $emptyApiUsage]);
+            
+            try {
+                $emptyApiUsage = json_encode([]);
+                $stmt = $pdo->prepare("INSERT INTO portfolios (user_id, portfolio_data, stats_data, api_usage_data) VALUES (?, ?, ?, ?)");
+                $stmt->execute([$userId, $emptyPortfolio, $emptyStats, $emptyApiUsage]);
+            } catch (PDOException $e) {
+                // Column doesn't exist, insert without it
+                $stmt = $pdo->prepare("INSERT INTO portfolios (user_id, portfolio_data, stats_data) VALUES (?, ?, ?)");
+                $stmt->execute([$userId, $emptyPortfolio, $emptyStats]);
+            }
             
             echo json_encode([
                 'success' => true,
@@ -57,14 +78,33 @@ try {
         $stmt->execute([$userId]);
         $exists = $stmt->fetch();
         
+        // Check if api_usage_data column exists
+        try {
+            $testStmt = $pdo->prepare("SELECT api_usage_data FROM portfolios LIMIT 1");
+            $testStmt->execute();
+            $hasApiUsageColumn = true;
+        } catch (PDOException $e) {
+            $hasApiUsageColumn = false;
+        }
+        
         if ($exists) {
             // Update existing portfolio
-            $stmt = $pdo->prepare("UPDATE portfolios SET portfolio_data = ?, stats_data = ?, api_usage_data = ? WHERE user_id = ?");
-            $stmt->execute([$portfolioData, $statsData, $apiUsageData, $userId]);
+            if ($hasApiUsageColumn) {
+                $stmt = $pdo->prepare("UPDATE portfolios SET portfolio_data = ?, stats_data = ?, api_usage_data = ? WHERE user_id = ?");
+                $stmt->execute([$portfolioData, $statsData, $apiUsageData, $userId]);
+            } else {
+                $stmt = $pdo->prepare("UPDATE portfolios SET portfolio_data = ?, stats_data = ? WHERE user_id = ?");
+                $stmt->execute([$portfolioData, $statsData, $userId]);
+            }
         } else {
             // Create new portfolio
-            $stmt = $pdo->prepare("INSERT INTO portfolios (user_id, portfolio_data, stats_data, api_usage_data) VALUES (?, ?, ?, ?)");
-            $stmt->execute([$userId, $portfolioData, $statsData, $apiUsageData]);
+            if ($hasApiUsageColumn) {
+                $stmt = $pdo->prepare("INSERT INTO portfolios (user_id, portfolio_data, stats_data, api_usage_data) VALUES (?, ?, ?, ?)");
+                $stmt->execute([$userId, $portfolioData, $statsData, $apiUsageData]);
+            } else {
+                $stmt = $pdo->prepare("INSERT INTO portfolios (user_id, portfolio_data, stats_data) VALUES (?, ?, ?)");
+                $stmt->execute([$userId, $portfolioData, $statsData]);
+            }
         }
         
         echo json_encode(['success' => true]);
