@@ -1,5 +1,5 @@
 // API Configuration
-const API_BASE = 'api'; // Change to your API path if different
+const API_BASE = window.location.pathname.replace(/\/[^/]*$/, '') + '/api'; // Use absolute path
 let currentUser = null;
 let isAuthenticated = false;
 
