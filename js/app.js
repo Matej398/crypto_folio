@@ -582,6 +582,13 @@ function setupEventListeners() {
             showAuthStatus('Signed in successfully!', 'success');
             await loadPortfolioFromServer();
             
+            // Start fetching prices immediately (don't wait)
+            if (portfolio.length > 0) {
+                updatePrices().catch(error => {
+                    console.error('Error updating prices after login:', error);
+                });
+            }
+            
             // Check if we migrated data (only show once)
             const migrationShown = localStorage.getItem('portfolioMigrationShown');
             const localPortfolio = JSON.parse(localStorage.getItem('cryptoPortfolio')) || [];
