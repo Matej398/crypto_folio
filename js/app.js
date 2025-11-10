@@ -357,19 +357,21 @@ updatePortfolioRecordsDisplay();
 
 // Initialize app
 async function init() {
-    // Lock scrolling initially (will be unlocked if authenticated)
-    document.body.classList.add('modal-open');
-    
-    // Check authentication first
+    // Check authentication first (before locking UI)
     const authenticated = await checkAuth();
-    updateUserUI();
     
     if (authenticated) {
+        // User is authenticated - don't show modal, unlock scrolling
+        document.body.classList.remove('modal-open');
         await loadPortfolioFromServer();
+        updateUserUI();
     } else {
+        // User not authenticated - show modal and lock scrolling
+        document.body.classList.add('modal-open');
         // Fallback to localStorage for non-authenticated users
         portfolio = JSON.parse(localStorage.getItem('cryptoPortfolio')) || [];
         portfolioStats = loadPortfolioStats();
+        updateUserUI();
     }
     
     await loadAvailableCoins();
@@ -604,6 +606,8 @@ function setupEventListeners() {
             const result = await changePassword(currentPwd, newPwd);
             
             if (result.success) {
+                // Clear saved password from localStorage since it's now invalid
+                clearPasswordFromStorage();
                 showChangePasswordStatus('Password changed successfully!', 'success');
                 setTimeout(() => {
                     closeChangePasswordModal();
