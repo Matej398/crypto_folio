@@ -1,12 +1,20 @@
 // API Configuration
-const API_BASE = window.location.pathname.replace(/\/[^/]*$/, '') + '/api'; // Use absolute path
+// Get the base path (everything up to and including /crypto_folio/)
+const getApiBase = () => {
+    const path = window.location.pathname;
+    // Remove trailing slash and filename, then add /api
+    const basePath = path.replace(/\/[^/]*$/, '').replace(/\/$/, '');
+    return basePath + '/api';
+};
+
 let currentUser = null;
 let isAuthenticated = false;
 
 // API Functions
 async function apiRequest(endpoint, options = {}) {
     // Build full URL
-    let url = `${API_BASE}/${endpoint}`;
+    const apiBase = getApiBase();
+    let url = `${apiBase}/${endpoint}`;
     // Ensure it's a proper URL (handle relative paths)
     if (!url.startsWith('http')) {
         url = window.location.origin + url;
