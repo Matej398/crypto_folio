@@ -227,16 +227,14 @@ async function loadPortfolioFromServer() {
             // Use server data (even if empty - this is the source of truth)
             portfolio = serverPortfolio;
             
-            // Merge server stats with any existing timestamps from localStorage to preserve them
-            // This prevents overwriting timestamps that were added via SQL script
-            const localStats = JSON.parse(localStorage.getItem('portfolioStats') || '{}');
+            // Use server stats as base - server is source of truth for values
             portfolioStats = {
-                highestValue: serverStats.highestValue ?? localStats.highestValue ?? null,
-                lowestValue: serverStats.lowestValue ?? localStats.lowestValue ?? null,
-                // Preserve timestamps from server if they exist, otherwise keep local ones, or use defaults
-                highestValueTimestamp: serverStats.highestValueTimestamp || localStats.highestValueTimestamp || 
+                highestValue: serverStats.highestValue !== undefined ? serverStats.highestValue : null,
+                lowestValue: serverStats.lowestValue !== undefined ? serverStats.lowestValue : null,
+                // Only merge timestamps - preserve from server if they exist, otherwise use defaults if values exist
+                highestValueTimestamp: serverStats.highestValueTimestamp || 
                     (serverStats.highestValue ? '2025-11-06T00:00:00.000Z' : null),
-                lowestValueTimestamp: serverStats.lowestValueTimestamp || localStats.lowestValueTimestamp || 
+                lowestValueTimestamp: serverStats.lowestValueTimestamp || 
                     (serverStats.lowestValue ? '2025-11-04T00:00:00.000Z' : null)
             };
             
@@ -248,26 +246,18 @@ async function loadPortfolioFromServer() {
                 lowestValueTimestamp: portfolioStats.lowestValueTimestamp
             });
             
-            // Debug: Check if timestamps are missing
-            if (!portfolioStats.highestValueTimestamp && portfolioStats.highestValue) {
-                console.warn('⚠️ highestValue exists but no timestamp! Setting default timestamp.');
-                portfolioStats.highestValueTimestamp = '2025-11-06T00:00:00.000Z';
-            }
-            if (!portfolioStats.lowestValueTimestamp && portfolioStats.lowestValue) {
-                console.warn('⚠️ lowestValue exists but no timestamp! Setting default timestamp.');
-                portfolioStats.lowestValueTimestamp = '2025-11-04T00:00:00.000Z';
-            }
-            
             // Always save server data to localStorage as backup (so it works offline too)
             localStorage.setItem('cryptoPortfolio', JSON.stringify(serverPortfolio));
-            // Save merged stats (with timestamps) to localStorage
             localStorage.setItem('portfolioStats', JSON.stringify(portfolioStats));
             
-            // If we added default timestamps, save them back to the server immediately
+            // If we added default timestamps and they weren't in server, save them back to the server
             if ((!serverStats.highestValueTimestamp && portfolioStats.highestValueTimestamp) ||
                 (!serverStats.lowestValueTimestamp && portfolioStats.lowestValueTimestamp)) {
                 console.log('Saving timestamps to server...');
-                savePortfolioStats().catch(err => console.error('Error saving timestamps:', err));
+                // Use setTimeout to avoid saving during initial load
+                setTimeout(() => {
+                    savePortfolioStats().catch(err => console.error('Error saving timestamps:', err));
+                }, 500);
             }
             
             // Always use server API usage data (server is source of truth, no local merging)
