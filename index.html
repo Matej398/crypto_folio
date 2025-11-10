@@ -43,6 +43,7 @@
             <div style="display: flex; align-items: center; gap: 12px;">
                 <div id="userInfo" class="user-info" style="display: none;">
                     <span id="userEmail" style="font-size: 0.7rem; color: var(--slate-400);"></span>
+                    <button id="changePasswordBtn" class="btn-secondary" style="padding: 6px 12px; font-size: 0.65rem;">Change Password</button>
                     <button id="signOutBtn" class="btn-secondary" style="padding: 6px 12px; font-size: 0.65rem;">Sign Out</button>
                 </div>
                 <button id="addCoinBtn" class="add-btn">+ Add Coin</button>
@@ -167,6 +168,41 @@
                 <button id="confirmCancelBtn" class="btn-secondary">Cancel</button>
                 <button id="confirmOkBtn" class="btn-danger">Confirm</button>
             </div>
+        </div>
+    </div>
+
+    <!-- Change Password Modal -->
+    <div id="changePasswordModal" class="modal hidden">
+        <div class="modal-content">
+            <button id="changePasswordCloseBtn" class="modal-close-btn" title="Close">
+                <svg width="24" height="24" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                </svg>
+            </button>
+            <h3 class="modal-title">Change Password</h3>
+            <div id="changePasswordError" class="auth-error" style="display: none;"></div>
+            
+            <div class="form-group">
+                <label class="form-label">Current Password</label>
+                <input type="password" id="currentPassword" class="form-input" placeholder="••••••••">
+            </div>
+            
+            <div class="form-group">
+                <label class="form-label">New Password</label>
+                <input type="password" id="newPassword" class="form-input" placeholder="••••••••">
+            </div>
+            
+            <div class="form-group">
+                <label class="form-label">Confirm New Password</label>
+                <input type="password" id="confirmNewPassword" class="form-input" placeholder="••••••••">
+            </div>
+            
+            <div class="modal-buttons">
+                <button id="changePasswordCancelBtn" class="btn-secondary">Cancel</button>
+                <button id="changePasswordSubmitBtn" class="btn-primary">Change Password</button>
+            </div>
+            
+            <div id="changePasswordStatus" class="auth-status" style="display: none;"></div>
         </div>
     </div>
 

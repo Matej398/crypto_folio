@@ -99,6 +99,26 @@ async function checkAuth() {
     }
 }
 
+async function changePassword(currentPwd, newPwd) {
+    try {
+        const result = await apiRequest('auth.php?action=change-password', {
+            method: 'POST',
+            body: JSON.stringify({
+                currentPassword: currentPwd,
+                newPassword: newPwd
+            }),
+        });
+        
+        if (result.success) {
+            return { success: true, message: result.message || 'Password changed successfully' };
+        } else {
+            return { success: false, error: result.error || 'Failed to change password' };
+        }
+    } catch (error) {
+        return { success: false, error: error.message || 'Network error' };
+    }
+}
+
 // Portfolio API Functions
 async function loadPortfolioFromServer() {
     if (!isAuthenticated) {
@@ -268,6 +288,16 @@ const authError = document.getElementById('authError');
 const authStatus = document.getElementById('authStatus');
 const userInfo = document.getElementById('userInfo');
 const userEmail = document.getElementById('userEmail');
+const changePasswordBtn = document.getElementById('changePasswordBtn');
+const changePasswordModal = document.getElementById('changePasswordModal');
+const changePasswordCloseBtn = document.getElementById('changePasswordCloseBtn');
+const changePasswordCancelBtn = document.getElementById('changePasswordCancelBtn');
+const changePasswordSubmitBtn = document.getElementById('changePasswordSubmitBtn');
+const currentPassword = document.getElementById('currentPassword');
+const newPassword = document.getElementById('newPassword');
+const confirmNewPassword = document.getElementById('confirmNewPassword');
+const changePasswordError = document.getElementById('changePasswordError');
+const changePasswordStatus = document.getElementById('changePasswordStatus');
 
 updatePortfolioRecordsDisplay();
 

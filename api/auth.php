@@ -76,6 +76,63 @@ if ($method === 'POST') {
             echo json_encode(['success' => false, 'error' => 'Database error: ' . $e->getMessage()]);
         }
         
+    } elseif ($action === 'change-password') {
+        // Change password
+        session_start();
+        if (!isset($_SESSION['user_id'])) {
+            http_response_code(401);
+            echo json_encode(['success' => false, 'error' => 'Authentication required']);
+            exit;
+        }
+        
+        $currentPassword = $input['currentPassword'] ?? '';
+        $newPassword = $input['newPassword'] ?? '';
+        
+        if (empty($currentPassword) || empty($newPassword)) {
+            http_response_code(400);
+            echo json_encode(['success' => false, 'error' => 'Current and new password are required']);
+            exit;
+        }
+        
+        if (strlen($newPassword) < 6) {
+            http_response_code(400);
+            echo json_encode(['success' => false, 'error' => 'New password must be at least 6 characters']);
+            exit;
+        }
+        
+        try {
+            $pdo = getDBConnection();
+            
+            // Get current user
+            $stmt = $pdo->prepare("SELECT id, password_hash FROM users WHERE id = ?");
+            $stmt->execute([$_SESSION['user_id']]);
+            $user = $stmt->fetch();
+            
+            if (!$user) {
+                http_response_code(404);
+                echo json_encode(['success' => false, 'error' => 'User not found']);
+                exit;
+            }
+            
+            // Verify current password
+            if (!password_verify($currentPassword, $user['password_hash'])) {
+                http_response_code(401);
+                echo json_encode(['success' => false, 'error' => 'Current password is incorrect']);
+                exit;
+            }
+            
+            // Update password
+            $newPasswordHash = password_hash($newPassword, PASSWORD_DEFAULT);
+            $stmt = $pdo->prepare("UPDATE users SET password_hash = ? WHERE id = ?");
+            $stmt->execute([$newPasswordHash, $_SESSION['user_id']]);
+            
+            echo json_encode(['success' => true, 'message' => 'Password changed successfully']);
+            
+        } catch (PDOException $e) {
+            http_response_code(500);
+            echo json_encode(['success' => false, 'error' => 'Database error: ' . $e->getMessage()]);
+        }
+        
     } elseif ($action === 'logout') {
         // User logout
         session_start();
