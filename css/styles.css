@@ -172,6 +172,50 @@ body.portfolio-high {
     line-height: 1;
 }
 
+.summary-value-with-timestamp {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+}
+
+.timestamp-icon {
+    display: inline-block;
+    width: 14px;
+    height: 14px;
+    opacity: 0.6;
+    cursor: help;
+    position: relative;
+}
+
+.timestamp-icon:hover {
+    opacity: 1;
+}
+
+.timestamp-icon::before {
+    content: '🕐';
+    font-size: 12px;
+    display: block;
+}
+
+.timestamp-icon[title]:hover::after {
+    content: attr(title);
+    position: absolute;
+    bottom: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    background: var(--slate-800);
+    color: var(--text-primary);
+    padding: 6px 10px;
+    border-radius: 6px;
+    font-size: 0.7rem;
+    white-space: nowrap;
+    margin-bottom: 5px;
+    border: 1px solid var(--slate-700);
+    z-index: 100;
+    pointer-events: none;
+}
+
 .portfolio-value {
     font-size: clamp(2.2rem, 2.6vw, 3rem);
     font-weight: 600;

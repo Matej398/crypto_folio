@@ -190,7 +190,12 @@ async function loadPortfolioFromServer() {
         
         if (result.success) {
             const serverPortfolio = result.portfolio || [];
-            const serverStats = result.stats || { highestValue: null, lowestValue: null };
+            const serverStats = result.stats || { 
+                highestValue: null, 
+                lowestValue: null,
+                highestValueTimestamp: null,
+                lowestValueTimestamp: null
+            };
             const serverApiUsage = result.apiUsage || {};
             
             console.log('Server portfolio:', serverPortfolio.length, 'coins');
@@ -207,7 +212,9 @@ async function loadPortfolioFromServer() {
                 portfolio = localPortfolio;
                 portfolioStats = {
                     highestValue: localStats.highestValue || null,
-                    lowestValue: localStats.lowestValue || null
+                    lowestValue: localStats.lowestValue || null,
+                    highestValueTimestamp: localStats.highestValueTimestamp || null,
+                    lowestValueTimestamp: localStats.lowestValueTimestamp || null
                 };
                 // Save portfolio to server (API usage will be saved separately when tracking)
                 await savePortfolioToServer();
@@ -288,7 +295,12 @@ let refreshInterval;
 let countdownInterval;
 let countdownSeconds = 60;
 let isTabVisible = true;
-let portfolioStats = { highestValue: null, lowestValue: null };
+let portfolioStats = { 
+    highestValue: null, 
+    lowestValue: null,
+    highestValueTimestamp: null,
+    lowestValueTimestamp: null
+};
 
 
 // API Usage Tracking
@@ -1260,9 +1272,39 @@ function formatPortfolioRecord(value) {
 function updatePortfolioRecordsDisplay() {
     if (highestValueEl) {
         highestValueEl.textContent = formatPortfolioRecord(portfolioStats.highestValue);
+        
+        // Show timestamp icon and tooltip if timestamp exists
+        const highestTimestampEl = document.getElementById('highestValueTimestamp');
+        if (highestTimestampEl && portfolioStats.highestValueTimestamp) {
+            const date = new Date(portfolioStats.highestValueTimestamp);
+            const formattedDate = date.toLocaleDateString('en-US', { 
+                year: 'numeric', 
+                month: '2-digit', 
+                day: '2-digit' 
+            });
+            highestTimestampEl.setAttribute('title', `Recorded on ${formattedDate}`);
+            highestTimestampEl.style.display = 'inline-block';
+        } else if (highestTimestampEl) {
+            highestTimestampEl.style.display = 'none';
+        }
     }
     if (lowestValueEl) {
         lowestValueEl.textContent = formatPortfolioRecord(portfolioStats.lowestValue);
+        
+        // Show timestamp icon and tooltip if timestamp exists
+        const lowestTimestampEl = document.getElementById('lowestValueTimestamp');
+        if (lowestTimestampEl && portfolioStats.lowestValueTimestamp) {
+            const date = new Date(portfolioStats.lowestValueTimestamp);
+            const formattedDate = date.toLocaleDateString('en-US', { 
+                year: 'numeric', 
+                month: '2-digit', 
+                day: '2-digit' 
+            });
+            lowestTimestampEl.setAttribute('title', `Recorded on ${formattedDate}`);
+            lowestTimestampEl.style.display = 'inline-block';
+        } else if (lowestTimestampEl) {
+            lowestTimestampEl.style.display = 'none';
+        }
     }
 }
 
@@ -1275,11 +1317,13 @@ function updatePortfolioRecords(currentValue) {
 
     if (portfolioStats.highestValue === null || currentValue > portfolioStats.highestValue) {
         portfolioStats.highestValue = currentValue;
+        portfolioStats.highestValueTimestamp = new Date().toISOString();
         shouldSave = true;
     }
 
     if (portfolioStats.lowestValue === null || currentValue < portfolioStats.lowestValue) {
         portfolioStats.lowestValue = currentValue;
+        portfolioStats.lowestValueTimestamp = new Date().toISOString();
         shouldSave = true;
     }
 
@@ -1641,13 +1685,20 @@ function loadPortfolioStats() {
         if (stored && typeof stored === 'object') {
             return {
                 highestValue: typeof stored.highestValue === 'number' ? stored.highestValue : null,
-                lowestValue: typeof stored.lowestValue === 'number' ? stored.lowestValue : null
+                lowestValue: typeof stored.lowestValue === 'number' ? stored.lowestValue : null,
+                highestValueTimestamp: stored.highestValueTimestamp || null,
+                lowestValueTimestamp: stored.lowestValueTimestamp || null
             };
         }
     } catch (error) {
         console.error('Error loading portfolio stats:', error);
     }
-    return { highestValue: null, lowestValue: null };
+    return { 
+        highestValue: null, 
+        lowestValue: null,
+        highestValueTimestamp: null,
+        lowestValueTimestamp: null
+    };
 }
 
 async function savePortfolioStats() {

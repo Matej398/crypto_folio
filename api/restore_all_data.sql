@@ -9,10 +9,15 @@ USE crypto_portfolio;
 SET @today_str = DATE_FORMAT(CURDATE(), '%a %b %d %Y');
 SET @api_usage = JSON_OBJECT(@today_str, 164);
 
--- Step 2: Restore portfolio stats from backup
--- highestValue: 153853.05260000002
--- lowestValue: 127345.27840000001
-SET @stats_data = JSON_OBJECT('highestValue', 153853.05260000002, 'lowestValue', 127345.27840000001);
+-- Step 2: Restore portfolio stats from backup with timestamps
+-- highestValue: 153853.05260000002 (recorded on 6.11.2025)
+-- lowestValue: 127345.27840000001 (recorded on 4.11.2025)
+SET @stats_data = JSON_OBJECT(
+    'highestValue', 153853.05260000002,
+    'lowestValue', 127345.27840000001,
+    'highestValueTimestamp', '2025-11-06T00:00:00.000Z',
+    'lowestValueTimestamp', '2025-11-04T00:00:00.000Z'
+);
 
 -- Step 3: Update the portfolio
 UPDATE portfolios 
