@@ -226,9 +226,11 @@ async function loadPortfolioFromServer() {
             localStorage.setItem('portfolioStats', JSON.stringify(serverStats));
             
             // Always use server API usage data (server is source of truth, no local merging)
+            // Update localStorage IMMEDIATELY so trackAPIUsage() uses correct data
             if (Object.keys(serverApiUsage).length > 0) {
                 // Server has data, use it and update localStorage
                 localStorage.setItem('apiUsage', JSON.stringify(serverApiUsage));
+                console.log('Updated localStorage with server API usage:', serverApiUsage);
             } else {
                 // Server has no data, clear local storage too
                 localStorage.setItem('apiUsage', JSON.stringify({}));
