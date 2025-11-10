@@ -41,6 +41,15 @@ async function apiRequest(endpoint, options = {}) {
         if (!response.ok) {
             const errorText = await response.text();
             console.error('Response error:', errorText);
+            // Try to parse JSON error message
+            try {
+                const errorData = JSON.parse(errorText);
+                if (errorData.error) {
+                    throw new Error(errorData.error);
+                }
+            } catch (e) {
+                // Not JSON, use the text as-is
+            }
             throw new Error(`HTTP error! status: ${response.status} - ${errorText}`);
         }
         const data = await response.json();
@@ -53,23 +62,69 @@ async function apiRequest(endpoint, options = {}) {
 }
 
 // Authentication Functions
-async function signIn(email, password) {
+async function signIn(password) {
     try {
         const result = await apiRequest('auth.php?action=login', {
             method: 'POST',
-            body: JSON.stringify({ email, password }),
+            body: JSON.stringify({ password }),
         });
         
         if (result.success) {
             currentUser = result.user;
             isAuthenticated = true;
+            // Save password to localStorage with 7-day expiration
+            savePasswordToStorage(password);
             return { success: true };
         } else {
             return { success: false, error: result.error || 'Sign in failed' };
         }
     } catch (error) {
-        return { success: false, error: error.message || 'Network error' };
+        // Parse error message from response
+        let errorMessage = 'Network error. Please check your connection.';
+        if (error.message) {
+            try {
+                const errorMatch = error.message.match(/\{"success":false,"error":"([^"]+)"\}/);
+                if (errorMatch) {
+                    errorMessage = errorMatch[1];
+                } else if (error.message.includes('401')) {
+                    errorMessage = 'Incorrect password. Please try again.';
+                }
+            } catch (e) {
+                // Use default error message
+            }
+        }
+        return { success: false, error: errorMessage };
     }
+}
+
+// Password persistence functions (7-day expiration)
+function savePasswordToStorage(password) {
+    const expirationTime = Date.now() + (7 * 24 * 60 * 60 * 1000); // 7 days
+    localStorage.setItem('savedPassword', JSON.stringify({
+        password: password,
+        expiresAt: expirationTime
+    }));
+}
+
+function getPasswordFromStorage() {
+    try {
+        const saved = localStorage.getItem('savedPassword');
+        if (!saved) return null;
+        
+        const data = JSON.parse(saved);
+        if (Date.now() > data.expiresAt) {
+            // Expired, remove it
+            localStorage.removeItem('savedPassword');
+            return null;
+        }
+        return data.password;
+    } catch (e) {
+        return null;
+    }
+}
+
+function clearPasswordFromStorage() {
+    localStorage.removeItem('savedPassword');
 }
 
 async function signOut() {
@@ -79,6 +134,7 @@ async function signOut() {
         isAuthenticated = false;
         portfolio = [];
         portfolioStats = { highestValue: null, lowestValue: null };
+        clearPasswordFromStorage();
         return { success: true };
     } catch (error) {
         return { success: false, error: error.message };
@@ -279,10 +335,8 @@ const confirmMessage = document.getElementById('confirmMessage');
 const confirmCancelBtn = document.getElementById('confirmCancelBtn');
 const confirmOkBtn = document.getElementById('confirmOkBtn');
 const authModal = document.getElementById('authModal');
-const authEmail = document.getElementById('authEmail');
 const authPassword = document.getElementById('authPassword');
 const signInBtn = document.getElementById('signInBtn');
-const signUpBtn = document.getElementById('signUpBtn');
 const signOutBtn = document.getElementById('signOutBtn');
 const authError = document.getElementById('authError');
 const authStatus = document.getElementById('authStatus');
@@ -443,45 +497,54 @@ function setupEventListeners() {
     });
     
     // Auth event listeners
+    const handleSignIn = async () => {
+        const password = authPassword?.value;
+        
+        if (!password) {
+            showAuthError('Please enter your password');
+            return;
+        }
+        
+        showAuthStatus('Signing in...', 'loading');
+        const result = await signIn(password);
+        
+        if (result.success) {
+            showAuthStatus('Signed in successfully!', 'success');
+            await loadPortfolioFromServer();
+            
+            // Check if we migrated data (only show once)
+            const migrationShown = localStorage.getItem('portfolioMigrationShown');
+            const localPortfolio = JSON.parse(localStorage.getItem('cryptoPortfolio')) || [];
+            if (!migrationShown && localPortfolio.length > 0 && portfolio.length === localPortfolio.length) {
+                showAuthStatus('Signed in! Your portfolio has been migrated to the cloud.', 'success');
+                localStorage.setItem('portfolioMigrationShown', 'true');
+            }
+            
+            setTimeout(() => {
+                authModal?.classList.add('hidden');
+                renderPortfolio();
+                updateSummary();
+                updateUserUI();
+            }, 1500);
+        } else {
+            showAuthError(result.error || 'Failed to sign in');
+        }
+    };
+    
     if (signInBtn) {
-        console.log('Sign in button found, attaching listener');
         signInBtn.addEventListener('click', async (e) => {
             e.preventDefault();
             e.stopPropagation();
-            console.log('Sign in button clicked!');
-            
-            const email = authEmail?.value.trim();
-            const password = authPassword?.value;
-            
-            console.log('Email:', email, 'Password length:', password?.length);
-            
-            if (!email || !password) {
-                showAuthError('Please enter email and password');
-                return;
-            }
-            
-            showAuthStatus('Signing in...', 'loading');
-            console.log('Calling signIn function...');
-            const result = await signIn(email, password);
-            
-            if (result.success) {
-                showAuthStatus('Signed in successfully!', 'success');
-                await loadPortfolioFromServer();
-                
-                // Check if we migrated data
-                const localPortfolio = JSON.parse(localStorage.getItem('cryptoPortfolio')) || [];
-                if (localPortfolio.length > 0 && portfolio.length === localPortfolio.length) {
-                    showAuthStatus('Signed in! Your portfolio has been migrated to the cloud.', 'success');
-                }
-                
-                setTimeout(() => {
-                    authModal?.classList.add('hidden');
-                    renderPortfolio();
-                    updateSummary();
-                    updateUserUI();
-                }, 1500);
-            } else {
-                showAuthError(result.error || 'Failed to sign in');
+            await handleSignIn();
+        });
+    }
+    
+    // Allow Enter key to submit password
+    if (authPassword) {
+        authPassword.addEventListener('keypress', async (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                await handleSignIn();
             }
         });
     }
@@ -619,6 +682,12 @@ function updateUserUI() {
         if (addCoinBtn) addCoinBtn.style.display = 'none';
         // Lock scrolling
         document.body.classList.add('modal-open');
+        
+        // Load saved password if available
+        const savedPassword = getPasswordFromStorage();
+        if (savedPassword && authPassword) {
+            authPassword.value = savedPassword;
+        }
     }
 }
 

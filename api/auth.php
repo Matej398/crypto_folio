@@ -12,13 +12,12 @@ if ($method === 'POST') {
     $input = json_decode(file_get_contents('php://input'), true);
     
     if ($action === 'login') {
-        // User login - single user system
-        $email = filter_var($input['email'] ?? '', FILTER_SANITIZE_EMAIL);
+        // User login - single user system (password only)
         $password = $input['password'] ?? '';
         
-        if (empty($email) || empty($password)) {
+        if (empty($password)) {
             http_response_code(400);
-            echo json_encode(['success' => false, 'error' => 'Email and password are required']);
+            echo json_encode(['success' => false, 'error' => 'Password is required']);
             exit;
         }
         
@@ -52,9 +51,9 @@ if ($method === 'POST') {
             }
             
             // Verify password
-            if ($email !== DEFAULT_EMAIL || !password_verify($password, $user['password_hash'])) {
+            if (!password_verify($password, $user['password_hash'])) {
                 http_response_code(401);
-                echo json_encode(['success' => false, 'error' => 'Invalid email or password']);
+                echo json_encode(['success' => false, 'error' => 'Incorrect password. Please try again.']);
                 exit;
             }
             
