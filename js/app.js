@@ -187,10 +187,12 @@ async function loadPortfolioFromServer() {
         if (result.success) {
             const serverPortfolio = result.portfolio || [];
             const serverStats = result.stats || { highestValue: null, lowestValue: null };
+            const serverApiUsage = result.apiUsage || {};
             
             // Check if server has empty portfolio but localStorage has data
             const localPortfolio = JSON.parse(localStorage.getItem('cryptoPortfolio')) || [];
             const localStats = JSON.parse(localStorage.getItem('portfolioStats') || '{}');
+            const localApiUsage = JSON.parse(localStorage.getItem('apiUsage') || '{}');
             
             if (serverPortfolio.length === 0 && localPortfolio.length > 0) {
                 // Server is empty but localStorage has data - migrate it
@@ -200,8 +202,14 @@ async function loadPortfolioFromServer() {
                     highestValue: localStats.highestValue || null,
                     lowestValue: localStats.lowestValue || null
                 };
-                // Save migrated data to server
-                await savePortfolioToServer();
+                // Migrate API usage if server is empty
+                if (Object.keys(serverApiUsage).length === 0 && Object.keys(localApiUsage).length > 0) {
+                    // Merge local API usage into server
+                    const mergedApiUsage = { ...serverApiUsage, ...localApiUsage };
+                    await savePortfolioToServer(mergedApiUsage, null, null);
+                } else {
+                    await savePortfolioToServer();
+                }
                 // Keep localStorage as backup
                 return;
             }
@@ -209,6 +217,18 @@ async function loadPortfolioFromServer() {
             // Use server data
             portfolio = serverPortfolio;
             portfolioStats = serverStats;
+            
+            // Migrate API usage from localStorage if server is empty but localStorage has data
+            if (Object.keys(serverApiUsage).length === 0 && Object.keys(localApiUsage).length > 0) {
+                console.log('Migrating API usage from localStorage to server...');
+                const mergedApiUsage = { ...serverApiUsage, ...localApiUsage };
+                await savePortfolioToServer(mergedApiUsage, null, null);
+                // Update localStorage with merged data
+                localStorage.setItem('apiUsage', JSON.stringify(mergedApiUsage));
+            } else if (Object.keys(serverApiUsage).length > 0) {
+                // Server has data, use it and update localStorage
+                localStorage.setItem('apiUsage', JSON.stringify(serverApiUsage));
+            }
         }
     } catch (error) {
         console.error('Error loading portfolio:', error);
@@ -217,7 +237,7 @@ async function loadPortfolioFromServer() {
     }
 }
 
-async function savePortfolioToServer() {
+async function savePortfolioToServer(apiUsageOverride = null, portfolioOverride = null, statsOverride = null) {
     if (!isAuthenticated) {
         // Fallback to localStorage
         localStorage.setItem('cryptoPortfolio', JSON.stringify(portfolio));
@@ -225,11 +245,17 @@ async function savePortfolioToServer() {
     }
     
     try {
+        // Get current API usage from localStorage
+        const currentApiUsage = apiUsageOverride || JSON.parse(localStorage.getItem('apiUsage') || '{}');
+        const portfolioToSave = portfolioOverride || portfolio;
+        const statsToSave = statsOverride || portfolioStats;
+        
         await apiRequest('portfolio.php', {
             method: 'POST',
             body: JSON.stringify({
-                portfolio: portfolio,
-                stats: portfolioStats,
+                portfolio: portfolioToSave,
+                stats: statsToSave,
+                apiUsage: currentApiUsage,
             }),
         });
     } catch (error) {
@@ -286,6 +312,14 @@ function trackAPIUsage() {
     
     usage.raw[today] = (usage.raw[today] || 0) + 1;
     localStorage.setItem('apiUsage', JSON.stringify(usage.raw));
+    
+    // Also save to server if authenticated
+    if (isAuthenticated) {
+        // Save API usage to server (async, don't wait)
+        savePortfolioToServer(usage.raw, null, null).catch(error => {
+            console.error('Error saving API usage to server:', error);
+        });
+    }
     
     updateAPIStats();
 }
@@ -357,6 +391,9 @@ updatePortfolioRecordsDisplay();
 
 // Initialize app
 async function init() {
+    // Initially hide modal and lock scrolling (will be updated after auth check)
+    document.body.classList.add('modal-open');
+    
     // Check authentication first (before locking UI)
     const authenticated = await checkAuth();
     

@@ -17,7 +17,7 @@ try {
     
     if ($method === 'GET') {
         // Get user's portfolio
-        $stmt = $pdo->prepare("SELECT portfolio_data, stats_data FROM portfolios WHERE user_id = ?");
+        $stmt = $pdo->prepare("SELECT portfolio_data, stats_data, api_usage_data FROM portfolios WHERE user_id = ?");
         $stmt->execute([$userId]);
         $portfolio = $stmt->fetch();
         
@@ -25,19 +25,22 @@ try {
             echo json_encode([
                 'success' => true,
                 'portfolio' => json_decode($portfolio['portfolio_data'], true) ?? [],
-                'stats' => json_decode($portfolio['stats_data'], true) ?? ['highestValue' => null, 'lowestValue' => null]
+                'stats' => json_decode($portfolio['stats_data'], true) ?? ['highestValue' => null, 'lowestValue' => null],
+                'apiUsage' => json_decode($portfolio['api_usage_data'], true) ?? []
             ]);
         } else {
             // Initialize if doesn't exist
             $emptyPortfolio = json_encode([]);
             $emptyStats = json_encode(['highestValue' => null, 'lowestValue' => null]);
-            $stmt = $pdo->prepare("INSERT INTO portfolios (user_id, portfolio_data, stats_data) VALUES (?, ?, ?)");
-            $stmt->execute([$userId, $emptyPortfolio, $emptyStats]);
+            $emptyApiUsage = json_encode([]);
+            $stmt = $pdo->prepare("INSERT INTO portfolios (user_id, portfolio_data, stats_data, api_usage_data) VALUES (?, ?, ?, ?)");
+            $stmt->execute([$userId, $emptyPortfolio, $emptyStats, $emptyApiUsage]);
             
             echo json_encode([
                 'success' => true,
                 'portfolio' => [],
-                'stats' => ['highestValue' => null, 'lowestValue' => null]
+                'stats' => ['highestValue' => null, 'lowestValue' => null],
+                'apiUsage' => []
             ]);
         }
         
@@ -47,6 +50,7 @@ try {
         
         $portfolioData = json_encode($input['portfolio'] ?? []);
         $statsData = json_encode($input['stats'] ?? ['highestValue' => null, 'lowestValue' => null]);
+        $apiUsageData = json_encode($input['apiUsage'] ?? []);
         
         // Check if portfolio exists
         $stmt = $pdo->prepare("SELECT id FROM portfolios WHERE user_id = ?");
@@ -55,12 +59,12 @@ try {
         
         if ($exists) {
             // Update existing portfolio
-            $stmt = $pdo->prepare("UPDATE portfolios SET portfolio_data = ?, stats_data = ? WHERE user_id = ?");
-            $stmt->execute([$portfolioData, $statsData, $userId]);
+            $stmt = $pdo->prepare("UPDATE portfolios SET portfolio_data = ?, stats_data = ?, api_usage_data = ? WHERE user_id = ?");
+            $stmt->execute([$portfolioData, $statsData, $apiUsageData, $userId]);
         } else {
             // Create new portfolio
-            $stmt = $pdo->prepare("INSERT INTO portfolios (user_id, portfolio_data, stats_data) VALUES (?, ?, ?)");
-            $stmt->execute([$userId, $portfolioData, $statsData]);
+            $stmt = $pdo->prepare("INSERT INTO portfolios (user_id, portfolio_data, stats_data, api_usage_data) VALUES (?, ?, ?, ?)");
+            $stmt->execute([$userId, $portfolioData, $statsData, $apiUsageData]);
         }
         
         echo json_encode(['success' => true]);
