@@ -5,7 +5,13 @@ let isAuthenticated = false;
 
 // API Functions
 async function apiRequest(endpoint, options = {}) {
-    const url = `${API_BASE}/${endpoint}`;
+    // Build full URL
+    let url = `${API_BASE}/${endpoint}`;
+    // Ensure it's a proper URL (handle relative paths)
+    if (!url.startsWith('http')) {
+        url = window.location.origin + url;
+    }
+    
     const defaultOptions = {
         headers: {
             'Content-Type': 'application/json',
@@ -13,8 +19,16 @@ async function apiRequest(endpoint, options = {}) {
         credentials: 'include', // Include cookies for session
     };
     
-    const response = await fetch(url, { ...defaultOptions, ...options });
-    return await response.json();
+    try {
+        const response = await fetch(url, { ...defaultOptions, ...options });
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        return await response.json();
+    } catch (error) {
+        console.error('API Request failed:', error, 'URL:', url);
+        throw error;
+    }
 }
 
 // Authentication Functions
