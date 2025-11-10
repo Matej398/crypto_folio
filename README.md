@@ -31,7 +31,7 @@ A password-protected cryptocurrency portfolio tracker with server-side data stor
 
 4. **Access:**
    - Open: `http://localhost:8000`
-   - Login: `admin@portfolio.com` / `portfolio123`
+   - Login with your credentials
 
 ### Server Deployment
 
@@ -49,12 +49,11 @@ A password-protected cryptocurrency portfolio tracker with server-side data stor
    # Create config.php with your server database credentials
    ```
 
-## Default Login
+## Security
 
-- **Email:** `admin@portfolio.com`
-- **Password:** `portfolio123`
-
-Change password via "Change Password" button in the UI after logging in.
+- Change the default password immediately after first login
+- Use "Change Password" button in the UI to update your password
+- Never share your login credentials
 
 ## File Structure
 
