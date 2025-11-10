@@ -2,20 +2,22 @@
 // Database configuration
 // Copy this file to config.php and update with your actual credentials
 
-// LOCAL DEVELOPMENT (default)
+// Database configuration
+// Copy this file to config.php and update with your actual credentials
+
+// For LOCAL development, use:
+// define('DB_USER', 'root');
+// define('DB_PASS', '');
+
+// For SERVER production (Hostinger), use:
+// define('DB_USER', 'crypto_portfolio');
+// define('DB_PASS', 'PxBeoY5Ei#xB');
+
 define('DB_HOST', 'localhost');
 define('DB_NAME', 'crypto_portfolio');
-define('DB_USER', 'root');
-define('DB_PASS', '');
+define('DB_USER', 'crypto_portfolio');  // Change to 'root' for local if needed
+define('DB_PASS', 'PxBeoY5Ei#xB');      // Change to '' for local if needed
 define('DB_CHARSET', 'utf8mb4');
-
-// SERVER PRODUCTION (update these for Hostinger)
-// Uncomment and update these for your server:
-// define('DB_HOST', 'localhost');
-// define('DB_NAME', 'crypto_portfolio');
-// define('DB_USER', 'crypto_portfolio');  // Your database user (NOT 'root')
-// define('DB_PASS', 'your_password_here'); // Your database password
-// define('DB_CHARSET', 'utf8mb4');
 
 // Create database connection
 function getDBConnection() {
