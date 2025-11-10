@@ -512,8 +512,7 @@ body.portfolio-high {
 .modal {
     position: fixed;
     inset: 0;
-    background: rgba(0, 0, 0, 0.7);
-    backdrop-filter: blur(4px);
+    background: rgba(0, 0, 0, 1);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -523,6 +522,11 @@ body.portfolio-high {
 
 .modal.hidden {
     display: none;
+}
+
+/* Prevent body scroll when modal is open */
+body.modal-open {
+    overflow: hidden;
 }
 
 .modal-content {
@@ -881,4 +885,39 @@ body.portfolio-high {
         bottom: 8px;
         padding: 16px;
     }
+}
+
+/* Auth Styles */
+.user-info {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.auth-error {
+    background: rgba(248, 113, 113, 0.1);
+    border: 1px solid var(--danger-color);
+    color: var(--danger-color);
+    padding: 12px;
+    border-radius: 8px;
+    margin-bottom: 16px;
+    font-size: 0.75rem;
+}
+
+.auth-status {
+    margin-top: 16px;
+    padding: 12px;
+    border-radius: 8px;
+    font-size: 0.75rem;
+    text-align: center;
+}
+
+.auth-status.success {
+    background: rgba(16, 185, 129, 0.1);
+    border: 1px solid var(--success-color);
+    color: var(--success-color);
+}
+
+.auth-status.loading {
+    color: var(--slate-400);
 }

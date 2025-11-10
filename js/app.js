@@ -1,12 +1,142 @@
+// API Configuration
+const API_BASE = 'api'; // Change to your API path if different
+let currentUser = null;
+let isAuthenticated = false;
+
+// API Functions
+async function apiRequest(endpoint, options = {}) {
+    const url = `${API_BASE}/${endpoint}`;
+    const defaultOptions = {
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        credentials: 'include', // Include cookies for session
+    };
+    
+    const response = await fetch(url, { ...defaultOptions, ...options });
+    return await response.json();
+}
+
+// Authentication Functions
+async function signIn(email, password) {
+    try {
+        const result = await apiRequest('auth.php?action=login', {
+            method: 'POST',
+            body: JSON.stringify({ email, password }),
+        });
+        
+        if (result.success) {
+            currentUser = result.user;
+            isAuthenticated = true;
+            return { success: true };
+        } else {
+            return { success: false, error: result.error || 'Sign in failed' };
+        }
+    } catch (error) {
+        return { success: false, error: error.message || 'Network error' };
+    }
+}
+
+async function signOut() {
+    try {
+        await apiRequest('auth.php?action=logout', { method: 'POST' });
+        currentUser = null;
+        isAuthenticated = false;
+        portfolio = [];
+        portfolioStats = { highestValue: null, lowestValue: null };
+        return { success: true };
+    } catch (error) {
+        return { success: false, error: error.message };
+    }
+}
+
+async function checkAuth() {
+    try {
+        const result = await apiRequest('auth.php?action=check');
+        if (result.success) {
+            currentUser = result.user;
+            isAuthenticated = true;
+            return true;
+        }
+        return false;
+    } catch (error) {
+        return false;
+    }
+}
+
+// Portfolio API Functions
+async function loadPortfolioFromServer() {
+    if (!isAuthenticated) {
+        portfolio = JSON.parse(localStorage.getItem('cryptoPortfolio')) || [];
+        return;
+    }
+    
+    try {
+        const result = await apiRequest('portfolio.php');
+        if (result.success) {
+            const serverPortfolio = result.portfolio || [];
+            const serverStats = result.stats || { highestValue: null, lowestValue: null };
+            
+            // Check if server has empty portfolio but localStorage has data
+            const localPortfolio = JSON.parse(localStorage.getItem('cryptoPortfolio')) || [];
+            const localStats = JSON.parse(localStorage.getItem('portfolioStats') || '{}');
+            
+            if (serverPortfolio.length === 0 && localPortfolio.length > 0) {
+                // Server is empty but localStorage has data - migrate it
+                console.log('Migrating localStorage data to server...');
+                portfolio = localPortfolio;
+                portfolioStats = {
+                    highestValue: localStats.highestValue || null,
+                    lowestValue: localStats.lowestValue || null
+                };
+                // Save migrated data to server
+                await savePortfolioToServer();
+                // Keep localStorage as backup
+                return;
+            }
+            
+            // Use server data
+            portfolio = serverPortfolio;
+            portfolioStats = serverStats;
+        }
+    } catch (error) {
+        console.error('Error loading portfolio:', error);
+        // Fallback to localStorage
+        portfolio = JSON.parse(localStorage.getItem('cryptoPortfolio')) || [];
+    }
+}
+
+async function savePortfolioToServer() {
+    if (!isAuthenticated) {
+        // Fallback to localStorage
+        localStorage.setItem('cryptoPortfolio', JSON.stringify(portfolio));
+        return;
+    }
+    
+    try {
+        await apiRequest('portfolio.php', {
+            method: 'POST',
+            body: JSON.stringify({
+                portfolio: portfolio,
+                stats: portfolioStats,
+            }),
+        });
+    } catch (error) {
+        console.error('Error saving portfolio:', error);
+        // Fallback to localStorage
+        localStorage.setItem('cryptoPortfolio', JSON.stringify(portfolio));
+    }
+}
+
 // State management
-let portfolio = JSON.parse(localStorage.getItem('cryptoPortfolio')) || [];
+let portfolio = [];
 let priceData = {};
 let availableCoins = [];
 let refreshInterval;
 let countdownInterval;
 let countdownSeconds = 60;
 let isTabVisible = true;
-let portfolioStats = loadPortfolioStats();
+let portfolioStats = { highestValue: null, lowestValue: null };
 
 
 // API Usage Tracking
@@ -93,11 +223,36 @@ const confirmModal = document.getElementById('confirmModal');
 const confirmMessage = document.getElementById('confirmMessage');
 const confirmCancelBtn = document.getElementById('confirmCancelBtn');
 const confirmOkBtn = document.getElementById('confirmOkBtn');
+const authModal = document.getElementById('authModal');
+const authEmail = document.getElementById('authEmail');
+const authPassword = document.getElementById('authPassword');
+const signInBtn = document.getElementById('signInBtn');
+const signUpBtn = document.getElementById('signUpBtn');
+const signOutBtn = document.getElementById('signOutBtn');
+const authError = document.getElementById('authError');
+const authStatus = document.getElementById('authStatus');
+const userInfo = document.getElementById('userInfo');
+const userEmail = document.getElementById('userEmail');
 
 updatePortfolioRecordsDisplay();
 
 // Initialize app
 async function init() {
+    // Lock scrolling initially (will be unlocked if authenticated)
+    document.body.classList.add('modal-open');
+    
+    // Check authentication first
+    const authenticated = await checkAuth();
+    updateUserUI();
+    
+    if (authenticated) {
+        await loadPortfolioFromServer();
+    } else {
+        // Fallback to localStorage for non-authenticated users
+        portfolio = JSON.parse(localStorage.getItem('cryptoPortfolio')) || [];
+        portfolioStats = loadPortfolioStats();
+    }
+    
     await loadAvailableCoins();
     updateAPIStats();
     
@@ -221,6 +376,99 @@ function setupEventListeners() {
             }
         }
     });
+    
+    // Auth event listeners
+    if (signInBtn) {
+        signInBtn.addEventListener('click', async () => {
+            const email = authEmail?.value.trim();
+            const password = authPassword?.value;
+            
+            if (!email || !password) {
+                showAuthError('Please enter email and password');
+                return;
+            }
+            
+            showAuthStatus('Signing in...', 'loading');
+            const result = await signIn(email, password);
+            
+            if (result.success) {
+                showAuthStatus('Signed in successfully!', 'success');
+                await loadPortfolioFromServer();
+                
+                // Check if we migrated data
+                const localPortfolio = JSON.parse(localStorage.getItem('cryptoPortfolio')) || [];
+                if (localPortfolio.length > 0 && portfolio.length === localPortfolio.length) {
+                    showAuthStatus('Signed in! Your portfolio has been migrated to the cloud.', 'success');
+                }
+                
+                setTimeout(() => {
+                    authModal?.classList.add('hidden');
+                    renderPortfolio();
+                    updateSummary();
+                    updateUserUI();
+                }, 1500);
+            } else {
+                showAuthError(result.error || 'Failed to sign in');
+            }
+        });
+    }
+    
+    if (signOutBtn) {
+        signOutBtn.addEventListener('click', async () => {
+            await signOut();
+            renderPortfolio();
+            updateSummary();
+            updateUserUI();
+            authModal?.classList.remove('hidden');
+        });
+    }
+    
+    // Close auth modal on Escape (only if logged in)
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && authModal && !authModal.classList.contains('hidden')) {
+            if (isAuthenticated) {
+                authModal.classList.add('hidden');
+            }
+        }
+    });
+}
+
+function updateUserUI() {
+    if (isAuthenticated && currentUser) {
+        if (userInfo) userInfo.style.display = 'flex';
+        if (userEmail) userEmail.textContent = currentUser.email;
+        if (authModal) authModal.classList.add('hidden');
+        if (addCoinBtn) addCoinBtn.style.display = 'block';
+        // Remove scroll lock
+        document.body.classList.remove('modal-open');
+    } else {
+        if (userInfo) userInfo.style.display = 'none';
+        if (authModal) authModal.classList.remove('hidden');
+        if (addCoinBtn) addCoinBtn.style.display = 'none';
+        // Lock scrolling
+        document.body.classList.add('modal-open');
+    }
+}
+
+function showAuthError(message) {
+    if (authError) {
+        authError.textContent = message;
+        authError.style.display = 'block';
+    }
+    if (authStatus) {
+        authStatus.style.display = 'none';
+    }
+}
+
+function showAuthStatus(message, type) {
+    if (authStatus) {
+        authStatus.textContent = message;
+        authStatus.className = `auth-status ${type}`;
+        authStatus.style.display = 'block';
+    }
+    if (authError) {
+        authError.style.display = 'none';
+    }
 }
 
 // Setup drag and drop for coin cards
@@ -1049,8 +1297,10 @@ function loadPortfolio() {
     portfolio = JSON.parse(localStorage.getItem('cryptoPortfolio')) || [];
 }
 
-// Save portfolio to localStorage
-function savePortfolio() {
+// Save portfolio to server or localStorage
+async function savePortfolio() {
+    await savePortfolioToServer();
+    // Also save to localStorage as backup
     localStorage.setItem('cryptoPortfolio', JSON.stringify(portfolio));
 }
 
@@ -1069,8 +1319,11 @@ function loadPortfolioStats() {
     return { highestValue: null, lowestValue: null };
 }
 
-function savePortfolioStats() {
+async function savePortfolioStats() {
     try {
+        // Save to server (which includes stats)
+        await savePortfolioToServer();
+        // Also save to localStorage as backup
         localStorage.setItem('portfolioStats', JSON.stringify(portfolioStats));
     } catch (error) {
         console.error('Error saving portfolio stats:', error);

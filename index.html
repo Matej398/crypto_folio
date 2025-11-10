@@ -10,13 +10,43 @@
     <link rel="stylesheet" href="css/styles.css">
 </head>
 <body>
+    <!-- Auth Modal -->
+    <div id="authModal" class="modal">
+        <div class="modal-content">
+            <h3 class="modal-title">Sign In</h3>
+            <div id="authError" class="auth-error" style="display: none;"></div>
+            
+            <div class="form-group">
+                <label class="form-label">Email</label>
+                <input type="email" id="authEmail" class="form-input" placeholder="admin@portfolio.com" value="admin@portfolio.com">
+            </div>
+            
+            <div class="form-group">
+                <label class="form-label">Password</label>
+                <input type="password" id="authPassword" class="form-input" placeholder="••••••••">
+            </div>
+            
+            <div class="modal-buttons">
+                <button id="signInBtn" class="btn-primary" style="width: 100%;">Sign In</button>
+            </div>
+            
+            <div id="authStatus" class="auth-status" style="display: none;"></div>
+        </div>
+    </div>
+
     <div id="app" class="container">
         <!-- Header -->
         <div class="header">
             <div>
                 <h1>Portofino</h1>
             </div>
-            <button id="addCoinBtn" class="add-btn">+ Add Coin</button>
+            <div style="display: flex; align-items: center; gap: 12px;">
+                <div id="userInfo" class="user-info" style="display: none;">
+                    <span id="userEmail" style="font-size: 0.7rem; color: var(--slate-400);"></span>
+                    <button id="signOutBtn" class="btn-secondary" style="padding: 6px 12px; font-size: 0.65rem;">Sign Out</button>
+                </div>
+                <button id="addCoinBtn" class="add-btn">+ Add Coin</button>
+            </div>
         </div>
 
         <!-- Portfolio Summary -->
