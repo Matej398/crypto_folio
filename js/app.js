@@ -1161,6 +1161,9 @@ async function updatePrices() {
         renderPortfolio();
         updateSummary();
         updateLastUpdated();
+        
+        // Schedule record update check after prices change
+        scheduleRecordUpdate();
     } catch (error) {
         console.error('Error fetching prices:', error);
         
