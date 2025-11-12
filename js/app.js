@@ -149,8 +149,32 @@ async function checkAuth() {
             isAuthenticated = true;
             return true;
         }
+        
+        // Session expired - try auto-login with saved password
+        const savedPassword = getPasswordFromStorage();
+        if (savedPassword) {
+            console.log('Session expired, attempting auto-login with saved password...');
+            const loginResult = await signIn(savedPassword);
+            if (loginResult.success) {
+                return true;
+            }
+        }
+        
         return false;
     } catch (error) {
+        // Try auto-login on error too
+        const savedPassword = getPasswordFromStorage();
+        if (savedPassword) {
+            console.log('Auth check failed, attempting auto-login with saved password...');
+            try {
+                const loginResult = await signIn(savedPassword);
+                if (loginResult.success) {
+                    return true;
+                }
+            } catch (e) {
+                // Auto-login failed, return false
+            }
+        }
         return false;
     }
 }

@@ -64,6 +64,16 @@ if ($method === 'POST') {
                 exit;
             }
             
+            // Set session cookie parameters explicitly (7 days)
+            session_set_cookie_params([
+                'lifetime' => 86400 * 7, // 7 days
+                'path' => '/',
+                'domain' => '',
+                'secure' => isset($_SERVER['HTTPS']),
+                'httponly' => true,
+                'samesite' => 'Lax'
+            ]);
+            
             // Start session
             session_start();
             $_SESSION['user_id'] = $user['id'];
