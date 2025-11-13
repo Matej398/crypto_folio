@@ -35,7 +35,12 @@
             <div>
                 <h1>Portofino</h1>
             </div>
-            <div class="header-actions">
+            <button id="mobileMenuToggle" class="mobile-menu-toggle" aria-expanded="false" aria-controls="headerActions" aria-label="Toggle menu">
+                <span></span>
+                <span></span>
+                <span></span>
+            </button>
+            <div class="header-actions" id="headerActions">
                 <div id="userInfo" class="user-menu" style="display: none;">
                     <button id="userMenuBtn" class="user-menu-btn" title="Blecky398">
                         <span class="user-menu-text">Blecky398</span>
@@ -56,6 +61,8 @@
                 </button>
             </div>
         </div>
+
+        <div id="mobileMenuOverlay" class="mobile-menu-overlay"></div>
 
         <!-- Portfolio Summary -->
         <div class="summary-card">

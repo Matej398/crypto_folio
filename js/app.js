@@ -475,6 +475,36 @@ const newPassword = document.getElementById('newPassword');
 const confirmNewPassword = document.getElementById('confirmNewPassword');
 const changePasswordError = document.getElementById('changePasswordError');
 const changePasswordStatus = document.getElementById('changePasswordStatus');
+const mobileMenuToggle = document.getElementById('mobileMenuToggle');
+const mobileMenuOverlay = document.getElementById('mobileMenuOverlay');
+
+function isMobileViewport() {
+    return window.matchMedia('(max-width: 768px)').matches;
+}
+
+function openMobileMenu() {
+    if (!isMobileViewport()) return;
+    document.body.classList.add('mobile-menu-open');
+    if (mobileMenuToggle) {
+        mobileMenuToggle.setAttribute('aria-expanded', 'true');
+    }
+}
+
+function closeMobileMenu() {
+    if (!document.body.classList.contains('mobile-menu-open')) return;
+    document.body.classList.remove('mobile-menu-open');
+    if (mobileMenuToggle) {
+        mobileMenuToggle.setAttribute('aria-expanded', 'false');
+    }
+}
+
+function toggleMobileMenu() {
+    if (document.body.classList.contains('mobile-menu-open')) {
+        closeMobileMenu();
+    } else {
+        openMobileMenu();
+    }
+}
 
 updatePortfolioRecordsDisplay();
 
@@ -613,6 +643,7 @@ function setupEventListeners() {
             if (!confirmModal.classList.contains('hidden')) {
                 closeConfirmModal();
             }
+            closeMobileMenu();
         }
     });
     
@@ -620,6 +651,33 @@ function setupEventListeners() {
     document.addEventListener('click', (e) => {
         if (!coinSearch.contains(e.target) && !coinSuggestions.contains(e.target)) {
             coinSuggestions.style.display = 'none';
+        }
+    });
+
+    if (mobileMenuToggle) {
+        mobileMenuToggle.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            if (!isMobileViewport()) return;
+            toggleMobileMenu();
+        });
+    }
+
+    if (mobileMenuOverlay) {
+        mobileMenuOverlay.addEventListener('click', closeMobileMenu);
+    }
+
+    document.addEventListener('click', (e) => {
+        if (!document.body.classList.contains('mobile-menu-open')) return;
+        const withinMenu = e.target.closest('.header-actions') || e.target.closest('#mobileMenuToggle');
+        if (!withinMenu) {
+            closeMobileMenu();
+        }
+    });
+
+    window.addEventListener('resize', () => {
+        if (!isMobileViewport()) {
+            closeMobileMenu();
         }
     });
     
@@ -715,6 +773,7 @@ function setupEventListeners() {
             updateSummary();
             updateUserUI();
             authModal?.classList.remove('hidden');
+            closeMobileMenu();
         });
     }
     
@@ -727,6 +786,7 @@ function setupEventListeners() {
             if (confirmNewPassword) confirmNewPassword.value = '';
             if (changePasswordError) changePasswordError.style.display = 'none';
             if (changePasswordStatus) changePasswordStatus.style.display = 'none';
+            closeMobileMenu();
         });
     }
     
@@ -784,6 +844,7 @@ function setupEventListeners() {
             if (changePasswordModal && !changePasswordModal.classList.contains('hidden')) {
                 closeChangePasswordModal();
             }
+            closeMobileMenu();
         }
     });
     
@@ -830,6 +891,7 @@ function showChangePasswordStatus(message, type) {
 }
 
 function updateUserUI() {
+    closeMobileMenu();
     if (isAuthenticated && currentUser) {
         if (userInfo) userInfo.style.display = 'block';
         // User name is already set to "Blecky398" in HTML
@@ -1571,6 +1633,7 @@ function updateLastUpdated() {
 
 // Modal functions
 function openModal() {
+    closeMobileMenu();
     modal.classList.remove('hidden');
 }
 
