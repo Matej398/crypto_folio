@@ -16,6 +16,34 @@ define('DB_USER', 'crypto_portfolio');  // Change to 'root' for local if needed
 define('DB_PASS', 'PxBeoY5Ei#xB');      // Change to '' for local if needed
 define('DB_CHARSET', 'utf8mb4');
 
+// Avatar upload configuration (configure as needed)
+if (!defined('AVATAR_UPLOAD_DIR')) {
+    define('AVATAR_UPLOAD_DIR', __DIR__ . '/uploads/avatars/');
+}
+if (!defined('AVATAR_RELATIVE_PATH')) {
+    define('AVATAR_RELATIVE_PATH', 'uploads/avatars/');
+}
+if (!defined('AVATAR_MAX_FILE_SIZE')) {
+    define('AVATAR_MAX_FILE_SIZE', 1024 * 1024); // 1MB
+}
+if (!defined('AVATAR_ALLOWED_MIME_TYPES')) {
+    define('AVATAR_ALLOWED_MIME_TYPES', ['image/jpeg', 'image/png', 'image/webp']);
+}
+
+if (!is_dir(AVATAR_UPLOAD_DIR)) {
+    @mkdir(AVATAR_UPLOAD_DIR, 0755, true);
+}
+
+function buildAvatarResponseUrl($relativePath) {
+    if (empty($relativePath)) {
+        return null;
+    }
+    $cleanPath = ltrim($relativePath, '/');
+    $fullPath = __DIR__ . '/' . $cleanPath;
+    $version = file_exists($fullPath) ? filemtime($fullPath) : time();
+    return 'api/' . $cleanPath . '?v=' . $version;
+}
+
 // Create database connection
 function getDBConnection() {
     try {
@@ -44,10 +72,10 @@ ini_set('session.cookie_samesite', 'Lax');
 header('Content-Type: application/json');
 // Allow credentials - use specific origin or get from request
 $origin = $_SERVER['HTTP_ORIGIN'] ?? '*';
-header('Access-Control-Allow-Origin: ' . $origin);
-header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS');
-header('Access-Control-Allow-Headers: Content-Type, Authorization');
-header('Access-Control-Allow-Credentials: true');
+header('Access-Control-Allow-Origin', $origin);
+header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+header('Access-Control-Allow-Credentials', 'true');
 
 // Handle preflight requests
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {

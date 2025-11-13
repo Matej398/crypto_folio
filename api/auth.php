@@ -25,15 +25,15 @@ if ($method === 'POST') {
             $pdo = getDBConnection();
             
             // Check if user exists, if not create with default password
-            $stmt = $pdo->prepare("SELECT id, email, password_hash FROM users WHERE email = ?");
+            $stmt = $pdo->prepare("SELECT id, email, password_hash, avatar_url FROM users WHERE email = ?");
             $stmt->execute([DEFAULT_EMAIL]);
             $user = $stmt->fetch();
             
             if (!$user) {
                 // Create default user if doesn't exist
                 $passwordHash = password_hash(DEFAULT_PASSWORD, PASSWORD_DEFAULT);
-                $stmt = $pdo->prepare("INSERT INTO users (email, password_hash) VALUES (?, ?)");
-                $stmt->execute([DEFAULT_EMAIL, $passwordHash]);
+                $stmt = $pdo->prepare("INSERT INTO users (email, password_hash, avatar_url) VALUES (?, ?, ?)");
+                $stmt->execute([DEFAULT_EMAIL, $passwordHash, null]);
                 
                 $userId = $pdo->lastInsertId();
                 
@@ -53,7 +53,8 @@ if ($method === 'POST') {
                 $user = [
                     'id' => $userId,
                     'email' => DEFAULT_EMAIL,
-                    'password_hash' => $passwordHash
+                    'password_hash' => $passwordHash,
+                    'avatar_url' => null
                 ];
             }
             
@@ -78,12 +79,14 @@ if ($method === 'POST') {
             session_start();
             $_SESSION['user_id'] = $user['id'];
             $_SESSION['email'] = $user['email'];
+            $_SESSION['avatar_url'] = $user['avatar_url'] ?? null;
             
             echo json_encode([
                 'success' => true,
                 'user' => [
                     'id' => $user['id'],
-                    'email' => $user['email']
+                    'email' => $user['email'],
+                    'avatarUrl' => buildAvatarResponseUrl($user['avatar_url'] ?? null)
                 ]
             ]);
             
@@ -167,7 +170,8 @@ if ($method === 'POST') {
             'success' => true,
             'user' => [
                 'id' => $_SESSION['user_id'],
-                'email' => $_SESSION['email']
+                'email' => $_SESSION['email'],
+                'avatarUrl' => buildAvatarResponseUrl($_SESSION['avatar_url'] ?? null)
             ]
         ]);
     } else {

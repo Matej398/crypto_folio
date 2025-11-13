@@ -359,6 +359,10 @@ let portfolioStats = {
     lowestValueTimestamp: null
 };
 
+const AVATAR_ALLOWED_MIME_TYPES = ['image/png', 'image/jpeg', 'image/webp'];
+const AVATAR_MAX_FILE_SIZE = 1024 * 1024; // 1MB
+let selectedAvatarFile = null;
+
 
 // API Usage Tracking
 function getAPIUsage() {
@@ -465,6 +469,8 @@ const authError = document.getElementById('authError');
 const authStatus = document.getElementById('authStatus');
 const userInfo = document.getElementById('userInfo');
 const userName = document.getElementById('userName');
+const userNameText = document.querySelector('.user-name-text');
+const userAvatarImage = document.getElementById('userAvatarImage');
 const changePasswordBtn = document.getElementById('changePasswordBtn');
 const changePasswordModal = document.getElementById('changePasswordModal');
 const changePasswordCloseBtn = document.getElementById('changePasswordCloseBtn');
@@ -475,6 +481,15 @@ const newPassword = document.getElementById('newPassword');
 const confirmNewPassword = document.getElementById('confirmNewPassword');
 const changePasswordError = document.getElementById('changePasswordError');
 const changePasswordStatus = document.getElementById('changePasswordStatus');
+const changeAvatarBtn = document.getElementById('changeAvatarBtn');
+const avatarModal = document.getElementById('avatarModal');
+const avatarCloseBtn = document.getElementById('avatarCloseBtn');
+const avatarCancelBtn = document.getElementById('avatarCancelBtn');
+const avatarUploadBtn = document.getElementById('avatarUploadBtn');
+const avatarFileInput = document.getElementById('avatarFileInput');
+const avatarPreviewImage = document.getElementById('avatarPreviewImage');
+const avatarPreviewFallback = document.getElementById('avatarPreviewFallback');
+const avatarError = document.getElementById('avatarError');
 const mobileMenuToggle = document.getElementById('mobileMenuToggle');
 const mobileMenuOverlay = document.getElementById('mobileMenuOverlay');
 
@@ -643,6 +658,9 @@ function setupEventListeners() {
             if (!confirmModal.classList.contains('hidden')) {
                 closeConfirmModal();
             }
+            if (avatarModal && !avatarModal.classList.contains('hidden')) {
+                closeAvatarModal();
+            }
             closeMobileMenu();
         }
     });
@@ -654,33 +672,40 @@ function setupEventListeners() {
         }
     });
 
-    if (mobileMenuToggle) {
-        mobileMenuToggle.addEventListener('click', (e) => {
+    if (changeAvatarBtn) {
+        changeAvatarBtn.addEventListener('click', (e) => {
             e.preventDefault();
-            e.stopPropagation();
-            if (!isMobileViewport()) return;
-            toggleMobileMenu();
+            openAvatarModal();
         });
     }
 
-    if (mobileMenuOverlay) {
-        mobileMenuOverlay.addEventListener('click', closeMobileMenu);
+    if (avatarCloseBtn) {
+        avatarCloseBtn.addEventListener('click', closeAvatarModal);
     }
 
-    document.addEventListener('click', (e) => {
-        if (!document.body.classList.contains('mobile-menu-open')) return;
-        const withinMenu = e.target.closest('.header-actions') || e.target.closest('#mobileMenuToggle');
-        if (!withinMenu) {
-            closeMobileMenu();
-        }
-    });
+    if (avatarCancelBtn) {
+        avatarCancelBtn.addEventListener('click', closeAvatarModal);
+    }
 
-    window.addEventListener('resize', () => {
-        if (!isMobileViewport()) {
-            closeMobileMenu();
-        }
-    });
-    
+    if (avatarFileInput) {
+        avatarFileInput.addEventListener('change', handleAvatarFileSelection);
+    }
+
+    if (avatarUploadBtn) {
+        avatarUploadBtn.addEventListener('click', async (e) => {
+            e.preventDefault();
+            await uploadAvatar();
+        });
+    }
+
+    if (avatarModal) {
+        avatarModal.addEventListener('click', (e) => {
+            if (e.target === avatarModal) {
+                closeAvatarModal();
+            }
+        });
+    }
+
     // Event delegation for edit buttons (since they're created dynamically)
     portfolioContainer.addEventListener('click', (e) => {
         const editBtn = e.target.closest('.edit-btn');
@@ -844,6 +869,9 @@ function setupEventListeners() {
             if (changePasswordModal && !changePasswordModal.classList.contains('hidden')) {
                 closeChangePasswordModal();
             }
+            if (avatarModal && !avatarModal.classList.contains('hidden')) {
+                closeAvatarModal();
+            }
             closeMobileMenu();
         }
     });
@@ -890,24 +918,193 @@ function showChangePasswordStatus(message, type) {
     }
 }
 
+function clearAvatarError() {
+    if (avatarError) {
+        avatarError.style.display = 'none';
+        avatarError.textContent = '';
+    }
+}
+
+function showAvatarError(message) {
+    if (avatarError) {
+        avatarError.textContent = message;
+        avatarError.style.display = 'block';
+    }
+}
+
+function updateAvatarPreview(source) {
+    if (!avatarPreviewImage || !avatarPreviewFallback) {
+        return;
+    }
+
+    if (source) {
+        avatarPreviewImage.src = source;
+        avatarPreviewImage.style.display = 'block';
+        avatarPreviewFallback.style.display = 'none';
+    } else {
+        avatarPreviewImage.removeAttribute('src');
+        avatarPreviewImage.style.display = 'none';
+        avatarPreviewFallback.style.display = 'flex';
+    }
+}
+
+function setUserAvatar(avatarUrl) {
+    const hasAvatar = typeof avatarUrl === 'string' && avatarUrl.trim() !== '';
+
+    if (userAvatarImage) {
+        if (hasAvatar) {
+            userAvatarImage.src = avatarUrl;
+            userAvatarImage.style.display = 'inline-block';
+        } else {
+            userAvatarImage.removeAttribute('src');
+            userAvatarImage.style.display = 'none';
+        }
+    }
+
+    if (userName) {
+        if (hasAvatar) {
+            userName.classList.add('has-avatar');
+        } else {
+            userName.classList.remove('has-avatar');
+        }
+    }
+}
+
+function isBodyModalLockNeeded() {
+    const trackedModals = [authModal, modal, editModal, confirmModal, changePasswordModal, avatarModal];
+    return trackedModals.some(el => el && !el.classList.contains('hidden'));
+}
+
+function resetAvatarModal() {
+    selectedAvatarFile = null;
+    clearAvatarError();
+    if (avatarFileInput) {
+        avatarFileInput.value = '';
+    }
+    if (avatarUploadBtn) {
+        avatarUploadBtn.disabled = true;
+        avatarUploadBtn.textContent = 'Upload';
+    }
+    const existingAvatarUrl = currentUser?.avatarUrl || null;
+    updateAvatarPreview(existingAvatarUrl);
+}
+
+function openAvatarModal() {
+    if (!avatarModal) return;
+    closeMobileMenu();
+    resetAvatarModal();
+    avatarModal.classList.remove('hidden');
+    document.body.classList.add('modal-open');
+}
+
+function closeAvatarModal() {
+    if (!avatarModal) return;
+    avatarModal.classList.add('hidden');
+    if (!isBodyModalLockNeeded()) {
+        document.body.classList.remove('modal-open');
+    }
+    selectedAvatarFile = null;
+}
+
+function handleAvatarFileSelection(event) {
+    if (!avatarUploadBtn) return;
+    clearAvatarError();
+    selectedAvatarFile = null;
+    avatarUploadBtn.disabled = true;
+
+    const file = event.target.files?.[0];
+    if (!file) {
+        updateAvatarPreview(currentUser?.avatarUrl || null);
+        return;
+    }
+
+    if (!AVATAR_ALLOWED_MIME_TYPES.includes(file.type)) {
+        showAvatarError('Unsupported file type. Use PNG, JPG, or WebP.');
+        updateAvatarPreview(null);
+        return;
+    }
+
+    if (file.size > AVATAR_MAX_FILE_SIZE) {
+        showAvatarError('File exceeds maximum size of 1MB.');
+        updateAvatarPreview(null);
+        return;
+    }
+
+    selectedAvatarFile = file;
+    avatarUploadBtn.disabled = false;
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+        updateAvatarPreview(e.target?.result || null);
+    };
+    reader.readAsDataURL(file);
+}
+
+async function uploadAvatar() {
+    if (!selectedAvatarFile) {
+        showAvatarError('Choose an image before uploading.');
+        return;
+    }
+
+    if (!avatarUploadBtn) return;
+
+    const formData = new FormData();
+    formData.append('avatar', selectedAvatarFile);
+
+    avatarUploadBtn.disabled = true;
+    const originalText = avatarUploadBtn.textContent;
+    avatarUploadBtn.textContent = 'Uploading...';
+
+    try {
+        const response = await fetch('api/avatar.php', {
+            method: 'POST',
+            credentials: 'include',
+            body: formData
+        });
+
+        const data = await response.json();
+
+        if (!response.ok || !data.success) {
+            throw new Error(data.error || `Upload failed (${response.status})`);
+        }
+
+        if (currentUser) {
+            currentUser.avatarUrl = data.avatarUrl;
+        }
+        setUserAvatar(data.avatarUrl);
+        closeAvatarModal();
+    } catch (error) {
+        showAvatarError(error.message || 'Failed to upload avatar.');
+        if (avatarUploadBtn) {
+            avatarUploadBtn.disabled = false;
+        }
+        return;
+    } finally {
+        if (avatarUploadBtn) {
+            avatarUploadBtn.textContent = originalText;
+            avatarUploadBtn.disabled = !selectedAvatarFile;
+        }
+    }
+}
+
 function updateUserUI() {
     closeMobileMenu();
-    if (isAuthenticated && currentUser) {
+    const isLoggedIn = isAuthenticated && currentUser;
+    if (userNameText) {
+        userNameText.textContent = isLoggedIn && currentUser?.email ? currentUser.email : 'User';
+    }
+    setUserAvatar(isLoggedIn ? currentUser?.avatarUrl || null : null);
+    if (isLoggedIn) {
         if (userInfo) userInfo.style.display = 'block';
-        // User name is already set to "Blecky398" in HTML
         if (authModal) authModal.classList.add('hidden');
         if (addCoinBtn) addCoinBtn.style.display = 'block';
-        // Remove scroll lock
         document.body.classList.remove('modal-open');
-        // Clear password field for security
         if (authPassword) authPassword.value = '';
     } else {
         if (userInfo) userInfo.style.display = 'none';
         if (authModal) authModal.classList.remove('hidden');
         if (addCoinBtn) addCoinBtn.style.display = 'none';
-        // Lock scrolling
         document.body.classList.add('modal-open');
-        // Don't auto-fill password for security - user must type it
         if (authPassword) authPassword.value = '';
     }
 }

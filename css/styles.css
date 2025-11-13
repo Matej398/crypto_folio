@@ -1119,6 +1119,15 @@ body.modal-open {
     align-items: center;
 }
 
+.user-avatar-image {
+    display: none;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 1px solid rgba(255, 255, 255, 0.25);
+}
+
 .user-name {
     color: var(--text-primary);
     font-family: 'Space Mono', monospace;
@@ -1134,6 +1143,14 @@ body.modal-open {
     padding: 6px 0;
 }
 
+.user-name.has-avatar .user-avatar-image {
+    display: inline-block;
+}
+
+.user-name.has-avatar .user-name-icon {
+    display: none;
+}
+
 .user-name:hover {
     color: var(--text-secondary);
 }
@@ -1141,10 +1158,6 @@ body.modal-open {
 .user-name:focus {
     outline: none;
     color: var(--text-secondary);
-}
-
-.user-name-icon {
-    display: none;
 }
 
 .user-name-text {
@@ -1238,11 +1251,70 @@ body.mobile-menu-open .mobile-menu-overlay {
 }
 
 @media (min-width: 769px) {
-    .user-name-icon {
-        display: inline-block;
-    }
-
     .user-name {
         gap: 10px;
     }
+}
+
+@media (max-width: 768px) {
+    .user-name {
+        font-size: 1rem;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        justify-content: center;
+        cursor: default;
+        gap: 12px;
+    }
+
+    .user-avatar-image {
+        width: 64px;
+        height: 64px;
+        border-width: 2px;
+    }
+
+    .user-name-icon {
+        display: none;
+    }
+
+    .user-name-text {
+        display: inline;
+    }
+}
+
+.avatar-preview {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    margin-bottom: 20px;
+}
+
+.avatar-preview-image,
+.avatar-preview-fallback {
+    width: 96px;
+    height: 96px;
+    border-radius: 50%;
+    display: none;
+}
+
+.avatar-preview-image {
+    object-fit: cover;
+    border: 2px solid rgba(255, 255, 255, 0.2);
+}
+
+.avatar-preview-fallback {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(255, 255, 255, 0.08);
+    border: 2px dashed rgba(255, 255, 255, 0.18);
+    color: rgba(255, 255, 255, 0.65);
+}
+
+.avatar-guidelines {
+    font-size: 0.75rem;
+    color: var(--slate-400);
+    margin-bottom: 12px;
+    text-align: center;
 }
