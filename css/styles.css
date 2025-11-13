@@ -127,7 +127,7 @@ body.mobile-menu-open .mobile-menu-toggle .mobile-menu-close-icon {
 .header-actions-content {
     display: flex;
     align-items: center;
-    gap: 15px;
+    gap: 18px;
 }
 
 .subtitle {
@@ -981,6 +981,15 @@ body.modal-open {
         text-transform: uppercase;
         justify-content: center;
         cursor: default;
+        gap: 12px;
+    }
+
+    .user-name-icon {
+        display: none;
+    }
+
+    .user-name-text {
+        display: inline;
     }
 
     body.mobile-menu-open .user-dropdown {
@@ -1134,6 +1143,14 @@ body.modal-open {
     color: var(--text-secondary);
 }
 
+.user-name-icon {
+    display: none;
+}
+
+.user-name-text {
+    display: inline;
+}
+
 .user-dropdown {
     position: absolute;
     top: calc(100% + 8px);
@@ -1218,4 +1235,14 @@ body.modal-open {
 
 body.mobile-menu-open .mobile-menu-overlay {
     display: block;
+}
+
+@media (min-width: 769px) {
+    .user-name-icon {
+        display: inline-block;
+    }
+
+    .user-name {
+        gap: 10px;
+    }
 }
