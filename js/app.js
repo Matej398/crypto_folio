@@ -358,6 +358,7 @@ let portfolioStats = {
     highestValueTimestamp: null,
     lowestValueTimestamp: null
 };
+let isMobileMenuOpen = false;
 
 
 // API Usage Tracking
@@ -475,8 +476,51 @@ const newPassword = document.getElementById('newPassword');
 const confirmNewPassword = document.getElementById('confirmNewPassword');
 const changePasswordError = document.getElementById('changePasswordError');
 const changePasswordStatus = document.getElementById('changePasswordStatus');
+const headerMenuToggle = document.getElementById('headerMenuToggle');
+const mobileMenu = document.getElementById('mobileMenu');
+const mobileAddCoinBtn = document.getElementById('mobileAddCoinBtn');
+const mobileChangePasswordBtn = document.getElementById('mobileChangePasswordBtn');
+const mobileSignOutBtn = document.getElementById('mobileSignOutBtn');
 
 updatePortfolioRecordsDisplay();
+
+function openMobileMenu() {
+    if (!mobileMenu || !headerMenuToggle) return;
+    mobileMenu.classList.add('open');
+    mobileMenu.setAttribute('aria-hidden', 'false');
+    headerMenuToggle.setAttribute('aria-expanded', 'true');
+    isMobileMenuOpen = true;
+}
+
+function closeMobileMenu() {
+    if (mobileMenu) {
+        mobileMenu.classList.remove('open');
+        mobileMenu.setAttribute('aria-hidden', 'true');
+    }
+    if (headerMenuToggle) {
+        headerMenuToggle.setAttribute('aria-expanded', 'false');
+    }
+    isMobileMenuOpen = false;
+}
+
+function toggleMobileMenu() {
+    if (isMobileMenuOpen) {
+        closeMobileMenu();
+    } else {
+        openMobileMenu();
+    }
+}
+
+function openChangePasswordModal() {
+    if (changePasswordModal) {
+        changePasswordModal.classList.remove('hidden');
+    }
+    if (currentPassword) currentPassword.value = '';
+    if (newPassword) newPassword.value = '';
+    if (confirmNewPassword) confirmNewPassword.value = '';
+    if (changePasswordError) changePasswordError.style.display = 'none';
+    if (changePasswordStatus) changePasswordStatus.style.display = 'none';
+}
 
 // Initialize app
 async function init() {
@@ -607,6 +651,9 @@ function setupEventListeners() {
     // Close modal on Escape key
     document.addEventListener('keydown', (e) => {
         if (e.key === 'Escape') {
+            if (isMobileMenuOpen) {
+                closeMobileMenu();
+            }
             if (!editModal.classList.contains('hidden')) {
                 closeEditModal();
             }
@@ -618,8 +665,16 @@ function setupEventListeners() {
     
     // Close suggestions when clicking outside
     document.addEventListener('click', (e) => {
-        if (!coinSearch.contains(e.target) && !coinSuggestions.contains(e.target)) {
+        if (coinSearch && coinSuggestions && !coinSearch.contains(e.target) && !coinSuggestions.contains(e.target)) {
             coinSuggestions.style.display = 'none';
+        }
+
+        if (isMobileMenuOpen && mobileMenu && headerMenuToggle) {
+            const clickedInsideMenu = mobileMenu.contains(e.target);
+            const clickedToggle = headerMenuToggle.contains(e.target);
+            if (!clickedInsideMenu && !clickedToggle) {
+                closeMobileMenu();
+            }
         }
     });
     
@@ -717,16 +772,50 @@ function setupEventListeners() {
             authModal?.classList.remove('hidden');
         });
     }
-    
+
+    if (headerMenuToggle) {
+        headerMenuToggle.addEventListener('click', (event) => {
+            event.preventDefault();
+            event.stopPropagation();
+            toggleMobileMenu();
+        });
+    }
+
+    if (mobileAddCoinBtn) {
+        mobileAddCoinBtn.addEventListener('click', () => {
+            closeMobileMenu();
+            openModal();
+        });
+    }
+
+    if (mobileChangePasswordBtn) {
+        mobileChangePasswordBtn.addEventListener('click', () => {
+            closeMobileMenu();
+            openChangePasswordModal();
+        });
+    }
+
+    if (mobileSignOutBtn) {
+        mobileSignOutBtn.addEventListener('click', async () => {
+            closeMobileMenu();
+            await signOut();
+            renderPortfolio();
+            updateSummary();
+            updateUserUI();
+            authModal?.classList.remove('hidden');
+        });
+    }
+
+    window.addEventListener('resize', () => {
+        if (window.innerWidth > 768) {
+            closeMobileMenu();
+        }
+    });
+
     // Change password modal
     if (changePasswordBtn) {
         changePasswordBtn.addEventListener('click', () => {
-            changePasswordModal?.classList.remove('hidden');
-            if (currentPassword) currentPassword.value = '';
-            if (newPassword) newPassword.value = '';
-            if (confirmNewPassword) confirmNewPassword.value = '';
-            if (changePasswordError) changePasswordError.style.display = 'none';
-            if (changePasswordStatus) changePasswordStatus.style.display = 'none';
+            openChangePasswordModal();
         });
     }
     
@@ -778,6 +867,9 @@ function setupEventListeners() {
     // Close modals on Escape
     document.addEventListener('keydown', (e) => {
         if (e.key === 'Escape') {
+            if (isMobileMenuOpen) {
+                closeMobileMenu();
+            }
             if (authModal && !authModal.classList.contains('hidden') && isAuthenticated) {
                 authModal.classList.add('hidden');
             }
@@ -831,10 +923,11 @@ function showChangePasswordStatus(message, type) {
 
 function updateUserUI() {
     if (isAuthenticated && currentUser) {
-        if (userInfo) userInfo.style.display = 'block';
+        if (userInfo) userInfo.style.display = '';
         // User name is already set to "Blecky398" in HTML
         if (authModal) authModal.classList.add('hidden');
-        if (addCoinBtn) addCoinBtn.style.display = 'block';
+        if (addCoinBtn) addCoinBtn.style.display = '';
+        if (headerMenuToggle) headerMenuToggle.style.display = '';
         // Remove scroll lock
         document.body.classList.remove('modal-open');
         // Clear password field for security
@@ -843,6 +936,8 @@ function updateUserUI() {
         if (userInfo) userInfo.style.display = 'none';
         if (authModal) authModal.classList.remove('hidden');
         if (addCoinBtn) addCoinBtn.style.display = 'none';
+        if (headerMenuToggle) headerMenuToggle.style.display = 'none';
+        closeMobileMenu();
         // Lock scrolling
         document.body.classList.add('modal-open');
         // Don't auto-fill password for security - user must type it
