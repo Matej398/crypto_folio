@@ -672,6 +672,13 @@ function setupEventListeners() {
         }
     });
 
+    if (mobileMenuToggle) {
+        mobileMenuToggle.addEventListener('click', (e) => {
+            e.preventDefault();
+            toggleMobileMenu();
+        });
+    }
+
     if (mobileMenuOverlay) {
         mobileMenuOverlay.addEventListener('click', closeMobileMenu);
     }
