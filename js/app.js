@@ -672,6 +672,18 @@ function setupEventListeners() {
         }
     });
 
+    if (mobileMenuOverlay) {
+        mobileMenuOverlay.addEventListener('click', closeMobileMenu);
+    }
+
+    document.addEventListener('click', (e) => {
+        if (!document.body.classList.contains('mobile-menu-open')) return;
+        const insideMenu = e.target.closest('.header-actions') || e.target.closest('#mobileMenuToggle');
+        if (!insideMenu) {
+            closeMobileMenu();
+        }
+    }, { capture: true });
+
     if (changeAvatarBtn) {
         changeAvatarBtn.addEventListener('click', (e) => {
             e.preventDefault();
