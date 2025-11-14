@@ -5,7 +5,7 @@ $method = $_SERVER['REQUEST_METHOD'];
 $action = $_GET['action'] ?? '';
 
 // Default credentials - change password in database or via change_password.php
-define('DEFAULT_EMAIL', 'admin@portfolio.com');
+define('DEFAULT_EMAIL', 'Blecky398');
 define('DEFAULT_PASSWORD', 'portfolio123'); // Change this password!
 
 if ($method === 'POST') {
