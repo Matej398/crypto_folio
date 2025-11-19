@@ -1617,8 +1617,15 @@ async function updatePrices() {
         updateSummary();
         updateLastUpdated();
         
-        // Schedule record update check after prices change
-        scheduleRecordUpdate();
+        // Check and update portfolio records immediately (no delay for regular price updates)
+        // Calculate current portfolio value for record check
+        const currentValue = portfolio.reduce((sum, coin) => {
+            const price = priceData[coin.id]?.usd || 0;
+            return sum + (price * coin.quantity);
+        }, 0);
+        if (typeof currentValue === 'number' && Number.isFinite(currentValue) && currentValue > 0) {
+            updatePortfolioRecords(currentValue);
+        }
     } catch (error) {
         console.error('Error fetching prices:', error);
         
