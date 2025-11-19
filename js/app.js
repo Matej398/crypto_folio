@@ -351,7 +351,7 @@ let countdownInterval;
 let countdownSeconds = 60;
 let isTabVisible = true;
 let recordUpdateTimeout = null;
-const RECORD_UPDATE_DELAY = 5 * 60 * 1000; // 5 minutes in milliseconds
+const RECORD_UPDATE_DELAY = 30 * 1000; // 30 seconds
 const HISTORY_PER_PAGE = 10;
 let portfolioStats = { 
     highestValue: null, 
