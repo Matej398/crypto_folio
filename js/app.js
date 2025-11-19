@@ -362,6 +362,123 @@ let portfolioStats = {
 const AVATAR_ALLOWED_MIME_TYPES = ['image/png', 'image/jpeg', 'image/webp'];
 const AVATAR_MAX_FILE_SIZE = 1024 * 1024; // 1MB
 let selectedAvatarFile = null;
+let historyData = [];
+const mockHistoryData = [
+    {
+        date: '2025-01-10',
+        totalValue: 18234.11,
+        change24h: 2.4,
+        dailyHigh: 18320.55,
+        dailyLow: 17680.12,
+        isHigh: true,
+        isLow: false,
+        coins: [
+            {
+                name: 'Bitcoin',
+                symbol: 'BTC',
+                value: 11234.12,
+                quantity: 0.27,
+                price: 41607.85,
+                changePercent: 3.4,
+                image: 'https://assets.coingecko.com/coins/images/1/small/bitcoin.png'
+            },
+            {
+                name: 'Ethereum',
+                symbol: 'ETH',
+                value: 4821.55,
+                quantity: 1.95,
+                price: 2473.62,
+                changePercent: 1.8,
+                image: 'https://assets.coingecko.com/coins/images/279/small/ethereum.png'
+            },
+            {
+                name: 'Solana',
+                symbol: 'SOL',
+                value: 2178.44,
+                quantity: 18.2,
+                price: 119.92,
+                changePercent: 6.9,
+                image: 'https://assets.coingecko.com/coins/images/4128/small/solana.png'
+            }
+        ]
+    },
+    {
+        date: '2025-01-09',
+        totalValue: 17780.02,
+        change24h: -1.9,
+        dailyHigh: 17910.73,
+        dailyLow: 17220.55,
+        isHigh: false,
+        isLow: false,
+        coins: [
+            {
+                name: 'Bitcoin',
+                symbol: 'BTC',
+                value: 10890.01,
+                quantity: 0.27,
+                price: 40333.37,
+                changePercent: -2.1,
+                image: 'https://assets.coingecko.com/coins/images/1/small/bitcoin.png'
+            },
+            {
+                name: 'Ethereum',
+                symbol: 'ETH',
+                value: 4710.25,
+                quantity: 1.95,
+                price: 2415.51,
+                changePercent: -0.8,
+                image: 'https://assets.coingecko.com/coins/images/279/small/ethereum.png'
+            },
+            {
+                name: 'Solana',
+                symbol: 'SOL',
+                value: 2179.76,
+                quantity: 18.2,
+                price: 119.76,
+                changePercent: 2.4,
+                image: 'https://assets.coingecko.com/coins/images/4128/small/solana.png'
+            }
+        ]
+    },
+    {
+        date: '2025-01-08',
+        totalValue: 17100.44,
+        change24h: -4.3,
+        dailyHigh: 17500.18,
+        dailyLow: 16844.66,
+        isHigh: false,
+        isLow: true,
+        coins: [
+            {
+                name: 'Bitcoin',
+                symbol: 'BTC',
+                value: 10322.14,
+                quantity: 0.27,
+                price: 38267.17,
+                changePercent: -5.1,
+                image: 'https://assets.coingecko.com/coins/images/1/small/bitcoin.png'
+            },
+            {
+                name: 'Ethereum',
+                symbol: 'ETH',
+                value: 4421.88,
+                quantity: 1.95,
+                price: 2267.63,
+                changePercent: -3.2,
+                image: 'https://assets.coingecko.com/coins/images/279/small/ethereum.png'
+            },
+            {
+                name: 'Solana',
+                symbol: 'SOL',
+                value: 2356.42,
+                quantity: 18.2,
+                price: 129.46,
+                changePercent: -1.4,
+                image: 'https://assets.coingecko.com/coins/images/4128/small/solana.png'
+            }
+        ]
+    }
+];
 
 
 // API Usage Tracking
@@ -493,6 +610,11 @@ const avatarPreviewFallback = document.getElementById('avatarPreviewFallback');
 const avatarError = document.getElementById('avatarError');
 const mobileMenuToggle = document.getElementById('mobileMenuToggle');
 const mobileMenuOverlay = document.getElementById('mobileMenuOverlay');
+const holdingsTabBtn = document.getElementById('holdingsTabBtn');
+const historyTabBtn = document.getElementById('historyTabBtn');
+const holdingsSection = document.getElementById('holdingsSection');
+const historySection = document.getElementById('historySection');
+const historyList = document.getElementById('historyList');
 
 function isMobileViewport() {
     return window.matchMedia('(max-width: 768px)').matches;
@@ -569,6 +691,8 @@ async function init() {
     
     // Always render portfolio first, even without prices
     renderPortfolio();
+    await loadHistorySnapshots();
+    switchPortfolioTab('holdings');
     updateSummary();
     
     // If prices haven't been fetched yet (non-authenticated), fetch them now
@@ -678,6 +802,20 @@ function setupEventListeners() {
         }
     }, { capture: true });
 
+    if (holdingsTabBtn) {
+        holdingsTabBtn.addEventListener('click', () => switchPortfolioTab('holdings'));
+    }
+    if (historyTabBtn) {
+        historyTabBtn.addEventListener('click', () => switchPortfolioTab('history'));
+    }
+    if (historyList) {
+        historyList.addEventListener('click', (e) => {
+            const card = e.target.closest('.history-card');
+            if (!card) return;
+            card.classList.toggle('expanded');
+        });
+    }
+
     if (changeAvatarBtn) {
         changeAvatarBtn.addEventListener('click', (e) => {
             e.preventDefault();
@@ -765,6 +903,7 @@ function setupEventListeners() {
                 renderPortfolio();
                 updateSummary();
                 updateUserUI();
+                loadHistorySnapshots().catch(err => console.error('Failed to refresh history after login:', err));
             }, 1500);
         } else {
             showAuthError(result.error || 'Failed to sign in');
@@ -2218,6 +2357,120 @@ function updateCountdown() {
         const seconds = countdownSeconds % 60;
         refreshTimerEl.textContent = `${minutes}:${seconds.toString().padStart(2, '0')}`;
     }
+}
+
+async function loadHistorySnapshots() {
+    if (!historyList) {
+        historyData = mockHistoryData;
+        renderHistoryList();
+        return;
+    }
+    try {
+        const response = await fetch('api/history.php', {
+            credentials: 'include',
+            headers: { 'Accept': 'application/json' }
+        });
+        if (!response.ok) {
+            throw new Error(`History request failed (${response.status})`);
+        }
+        const payload = await response.json();
+        if (!payload?.success) {
+            throw new Error(payload?.error || 'History API returned an error');
+        }
+        historyData = Array.isArray(payload.history) ? payload.history : [];
+        if (historyData.length === 0) {
+            historyData = mockHistoryData;
+        }
+    } catch (error) {
+        console.error('Failed to load history snapshots:', error);
+        historyData = mockHistoryData;
+    }
+    renderHistoryList();
+}
+
+function switchPortfolioTab(target) {
+    const showHistory = target === 'history';
+    if (holdingsSection) {
+        holdingsSection.classList.toggle('section-hidden', showHistory);
+        holdingsSection.setAttribute('aria-hidden', showHistory ? 'true' : 'false');
+    }
+    if (historySection) {
+        historySection.classList.toggle('section-hidden', !showHistory);
+        historySection.setAttribute('aria-hidden', showHistory ? 'false' : 'true');
+    }
+    holdingsTabBtn?.classList.toggle('active', !showHistory);
+    historyTabBtn?.classList.toggle('active', showHistory);
+}
+
+function renderHistoryList() {
+    if (!historyList) return;
+    const activeHistory = (historyData && historyData.length > 0) ? historyData : mockHistoryData;
+    if (!activeHistory || activeHistory.length === 0) {
+        historyList.innerHTML = '<p class="history-subtitle">History data coming soon.</p>';
+        return;
+    }
+    const markup = activeHistory.map((entry, index) => {
+        const totalChange = typeof entry.change24h === 'number' ? entry.change24h : (entry.change ?? 0);
+        const changeClass = totalChange >= 0 ? 'positive' : 'negative';
+        const changeValue = `${totalChange >= 0 ? '+' : ''}${totalChange.toFixed(1)}%`;
+        const formattedDate = formatEULocalDate(entry.date);
+        const coinsMarkup = (entry.coins || []).map((coin) => {
+            const changeField = typeof coin.change24h === 'number' ? coin.change24h : (coin.change ?? 0);
+            const coinChangeClass = changeField >= 0 ? 'positive' : 'negative';
+            const coinChangeValue = `${changeField >= 0 ? '+' : ''}${changeField.toFixed(2)}%`;
+            const priceDisplay = typeof coin.price === 'number' ? formatPortfolioRecord(coin.price) : (coin.price_usd ? formatPortfolioRecord(coin.price_usd) : '—');
+            const quantityField = typeof coin.quantity === 'number' ? coin.quantity : (coin.qty ?? null);
+            const quantityDisplay = quantityField !== null ? formatQuantity(quantityField) : '—';
+            const coinValue = typeof coin.value === 'number' ? coin.value : (coin.value_usd ?? null);
+            const valueDisplay = coinValue !== null ? formatPortfolioRecord(coinValue) : '';
+            return `
+                <div class="history-coin">
+                    <div class="history-coin-header">
+                        <img src="${coin.image || ''}" alt="${coin.name || coin.coinId}" loading="lazy">
+                        <div>
+                            <p class="history-coin-name">${coin.name || coin.coinId} <span>(${coin.symbol || ''})</span></p>
+                            ${valueDisplay ? `<p class="history-coin-value">${valueDisplay}</p>` : ''}
+                        </div>
+                    </div>
+                    <div class="history-coin-row">
+                        <span>Price</span>
+                        <span>${priceDisplay}</span>
+                    </div>
+                    <div class="history-coin-row">
+                        <span>Quantity</span>
+                        <span>${quantityDisplay}</span>
+                    </div>
+                    <div class="history-coin-row">
+                        <span>24h</span>
+                        <span class="history-coin-change ${coinChangeClass}">${coinChangeValue}</span>
+                    </div>
+                </div>
+            `;
+        }).join('');
+        return `
+            <article class="history-card" data-index="${index}">
+                <div class="history-card-header">
+                    <div class="history-card-meta">
+                        <div class="history-card-date-group">
+                            <p class="history-card-date">${formattedDate}</p>
+                            <span class="history-stat-pill">Low <span class="history-stat-value">${formatPortfolioRecord(entry.dailyLow)}</span></span>
+                            <span class="history-stat-pill">High <span class="history-stat-value">${formatPortfolioRecord(entry.dailyHigh)}</span></span>
+                        </div>
+                        <div class="history-card-total">
+                            <p class="history-card-value">${formatPortfolioRecord(entry.totalValue)}</p>
+                            <p class="history-card-change ${changeClass}">${changeValue}</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="history-card-details">
+                    <div class="history-coins">
+                        ${coinsMarkup}
+                    </div>
+                </div>
+            </article>
+        `;
+    }).join('');
+    historyList.innerHTML = markup || '<p class="history-subtitle">History data coming soon.</p>';
 }
 
 // Initialize on page load

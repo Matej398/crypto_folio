@@ -99,17 +99,27 @@
             </div>
         </div>
 
-        <!-- Holdings Header -->
-        <div class="holdings-header">
-            <h2>Your Holdings</h2>
-        </div>
-
-        <!-- Portfolio Grid -->
-        <div id="portfolio" class="portfolio-grid">
-            <div class="empty-state">
-                <p class="empty-text">No coins added yet. Click "Add Coin" to get started!</p>
+        <div class="portfolio-tabs-wrapper">
+            <div class="portfolio-tabs">
+                <button id="holdingsTabBtn" class="tab-button active" type="button">Holdings</button>
+                <button id="historyTabBtn" class="tab-button" type="button">History</button>
             </div>
         </div>
+
+        <section id="holdingsSection">
+            <!-- Portfolio Grid -->
+            <div id="portfolio" class="portfolio-grid">
+                <div class="empty-state">
+                    <p class="empty-text">No coins added yet. Click "Add Coin" to get started!</p>
+                </div>
+            </div>
+        </section>
+
+        <section id="historySection" class="history-section section-hidden" aria-live="polite">
+            <div id="historyList" class="history-list">
+                <!-- Filled by JS -->
+            </div>
+        </section>
 
     </div>
 

@@ -10,6 +10,7 @@ A password-protected cryptocurrency portfolio tracker with server-side data stor
 - ✅ Change password feature in UI
 - ✅ Real-time price updates
 - ✅ Portfolio statistics tracking
+- ✅ Daily history snapshots (cron + backend API)
 
 ## Quick Start
 
@@ -66,9 +67,12 @@ crypto_folio/
 ├── api/
 │   ├── auth.php         # Authentication API
 │   ├── portfolio.php    # Portfolio CRUD API
+│   ├── history.php      # Portfolio history API
+│   ├── snapshot.php     # Daily snapshot script (cron)
 │   ├── config.example.php # Config template
 │   ├── database.sql     # Database schema
 │   ├── migration_add_api_usage.sql # Migration script (if needed)
+│   ├── migration_add_portfolio_history.sql # Adds history tables
 │   └── restore_all_data.sql # Restore script (for data recovery)
 ├── README.md
 └── .gitignore
@@ -79,6 +83,25 @@ crypto_folio/
 - `api/config.php` is in `.gitignore` - it won't be committed to git
 - Each environment (local/server) needs its own `config.php`
 - Never commit `config.php` with real credentials
+
+## Daily History Snapshots
+
+1. **Run the migration**  
+   - Import `api/migration_add_portfolio_history.sql` once on your database.
+
+2. **Update config**  
+   - Copy `SNAPSHOT_TIMEZONE` and `CRON_SECRET` from `api/config.example.php` into your `config.php`.
+   - Set `CRON_SECRET` to a long random string.
+
+3. **Schedule the cron job**  
+   - CLI example (Hostinger cron):  
+     `0 0 * * * /usr/bin/php /home/user/crypto_folio/api/snapshot.php`
+   - HTTP example (if CLI not available):  
+     `0 0 * * * curl "https://yourdomain/api/snapshot.php?token=YOUR_SECRET"`
+   - Cron runs once per day at midnight (server timezone) and stores the snapshot in the new tables.
+
+4. **History API**  
+   - Frontend calls `api/history.php` (authenticated) to fetch stored snapshots.
 
 ## Troubleshooting
 

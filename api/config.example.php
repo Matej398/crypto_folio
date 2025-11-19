@@ -15,6 +15,8 @@ define('DB_NAME', 'crypto_portfolio');
 define('DB_USER', 'crypto_portfolio');  // Change to 'root' for local if needed
 define('DB_PASS', 'PxBeoY5Ei#xB');      // Change to '' for local if needed
 define('DB_CHARSET', 'utf8mb4');
+define('SNAPSHOT_TIMEZONE', 'Europe/Ljubljana'); // Used for daily cron snapshots
+define('CRON_SECRET', 'replace-this-token'); // Change before enabling cron access
 
 // Avatar upload configuration (configure as needed)
 if (!defined('AVATAR_UPLOAD_DIR')) {

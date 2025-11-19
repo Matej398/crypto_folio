@@ -328,6 +328,315 @@ body.mobile-menu-open .mobile-menu-toggle .mobile-menu-close-icon {
     color: var(--text-secondary);
 }
 
+.portfolio-tabs-wrapper {
+    border-top: 1px solid rgba(63, 63, 70, 0.45);
+    margin-top: 28px;
+    padding-top: 20px;
+    margin-bottom: 32px;
+}
+
+.portfolio-tabs {
+    display: inline-flex;
+    gap: 20px;
+}
+
+.tab-button {
+    background: none;
+    border: none;
+    color: var(--text-secondary);
+    font-size: 0.82rem;
+    font-weight: 600;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    cursor: pointer;
+    padding: 4px 0;
+    border-radius: 0;
+    transition: color 0.2s ease;
+    position: relative;
+}
+
+.tab-button::after {
+    content: '';
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: -6px;
+    height: 1px;
+    background: transparent;
+}
+
+.tab-button:hover {
+    color: var(--text-primary);
+}
+
+.tab-button.active {
+    color: var(--text-primary);
+}
+
+.tab-button.active::after {
+    background: var(--text-primary);
+}
+
+.section-hidden {
+    display: none !important;
+}
+
+.history-section {
+    margin-top: 16px;
+    background: none;
+    border-radius: 16px;
+    padding: 0 0 10px;
+}
+
+.history-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 24px;
+}
+
+.history-title {
+    font-size: 0.75rem;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--text-secondary);
+}
+
+.history-subtitle {
+    font-size: 0.7rem;
+    color: var(--slate-400);
+    margin-top: 6px;
+}
+
+.history-list {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+
+.history-card {
+    border: none;
+    border-radius: 20px;
+    padding: 22px;
+    background: rgba(12, 12, 16, 0.85);
+    transition: border 0.2s ease, background 0.2s ease, transform 0.2s ease;
+    cursor: pointer;
+    box-shadow: 0 15px 35px rgba(0,0,0,0.35);
+}
+
+.history-card:hover {
+    background: rgba(16, 16, 22, 0.95);
+}
+
+.history-card.expanded {
+    background: rgba(16, 16, 22, 0.95);
+}
+
+.history-card-header {
+    display: flex;
+    justify-content: space-between;
+    gap: 16px;
+    flex-wrap: wrap;
+    align-items: center;
+}
+
+.history-card-meta {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    width: 100%;
+}
+
+.history-card-date-group {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    flex-wrap: wrap;
+    flex: 1;
+}
+
+.history-card-total {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    justify-content: flex-end;
+    margin-left: auto;
+    text-align: right;
+    min-width: 200px;
+    flex-shrink: 0;
+}
+
+.history-card-date {
+    font-size: 0.7rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--slate-400);
+}
+
+.history-card-value {
+    font-size: 0.9rem;
+    color: var(--text-primary);
+}
+
+.history-card-change {
+    font-size: 0.7rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: rgba(52, 211, 153, 0.9);
+}
+.history-card-change.negative {
+    color: rgba(248, 113, 113, 0.9);
+}
+
+.history-stat-pill {
+    display: inline-flex;
+    gap: 6px;
+    align-items: center;
+    font-size: 0.65rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--slate-300);
+}
+
+.history-stat-value {
+    color: var(--text-primary);
+}
+
+.history-badges {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.history-badge {
+    font-size: 0.6rem;
+    text-transform: uppercase;
+    letter-spacing: 0.16em;
+    padding: 4px 10px;
+    border-radius: 999px;
+    border: 1px solid rgba(148, 163, 184, 0.3);
+    color: var(--slate-300);
+}
+
+.history-badge.high {
+    border-color: rgba(52, 211, 153, 0.6);
+    color: rgba(52, 211, 153, 0.9);
+}
+
+.history-badge.low {
+    border-color: rgba(248, 113, 113, 0.6);
+    color: rgba(248, 113, 113, 0.9);
+}
+
+.history-card-details {
+    margin-top: 12px;
+    border-top: 1px solid rgba(63, 63, 70, 0.2);
+    padding-top: 12px;
+    display: none;
+}
+
+.history-card.expanded .history-card-details {
+    display: block;
+}
+
+.history-coins {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 12px;
+}
+
+.history-coin {
+    border: none;
+    border-radius: 16px;
+    padding: 14px;
+    background: rgba(15, 15, 19, 0.95);
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    box-shadow: 0 10px 20px rgba(0,0,0,0.25);
+}
+
+.history-coin-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.history-coin-header img {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    object-fit: cover;
+    background: var(--slate-700);
+}
+
+.history-coin-name {
+    font-size: 0.75rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--text-secondary);
+}
+
+.history-coin-value {
+    font-size: 0.8rem;
+    color: var(--text-primary);
+}
+
+.history-coin-row {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.75rem;
+    color: var(--text-primary);
+    letter-spacing: 0.08em;
+}
+
+.history-coin-row span:first-child {
+    color: var(--slate-400);
+}
+
+.history-coin-change {
+    font-size: 0.7rem;
+    letter-spacing: 0.1em;
+}
+
+.history-coin-change.positive {
+    color: rgba(52, 211, 153, 0.9);
+}
+
+.history-coin-change.negative {
+    color: rgba(248, 113, 113, 0.9);
+}
+
+@media (max-width: 768px) {
+    .portfolio-tabs {
+        width: 100%;
+        justify-content: space-between;
+        margin: 24px 0 16px;
+    }
+
+    .tab-button {
+        flex: 1;
+        text-align: center;
+    }
+
+    .history-section {
+        padding: 20px;
+    }
+
+    .history-card {
+        padding: 16px;
+    }
+
+    .history-card-total {
+        width: 100%;
+        justify-content: flex-start;
+        text-align: left;
+        margin-left: 0;
+        min-width: auto;
+    }
+}
+
 
 .add-btn {
     background: #ffffff;
