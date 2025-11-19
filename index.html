@@ -118,7 +118,8 @@
         <div class="footer-content">
             <div class="footer-left">
                 <div class="refresh-info">
-                    <span id="refreshTimer" class="refresh-timer">Next refresh in 1:00</span>
+                    <span class="refresh-label">Next Refresh:</span>
+                    <span id="refreshTimer" class="refresh-timer">1:00</span>
                 </div>
             </div>
             <div class="footer-right">
@@ -135,6 +136,11 @@
     <!-- Add Coin Modal -->
     <div id="modal" class="modal hidden">
         <div class="modal-content">
+            <button id="addModalCloseBtn" class="modal-close-btn" title="Close">
+                <svg width="24" height="24" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                </svg>
+            </button>
             <h3 class="modal-title">Add Coin to Portfolio</h3>
             
             <div class="form-group">

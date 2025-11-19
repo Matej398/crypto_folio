@@ -437,6 +437,7 @@ const addCoinBtn = document.getElementById('addCoinBtn');
 const modal = document.getElementById('modal');
 const cancelBtn = document.getElementById('cancelBtn');
 const addBtn = document.getElementById('addBtn');
+const addModalCloseBtn = document.getElementById('addModalCloseBtn');
 const coinSelect = document.getElementById('coinSelect');
 const coinSearch = document.getElementById('coinSearch');
 const coinSuggestions = document.getElementById('coinSuggestions');
@@ -527,6 +528,7 @@ updatePortfolioRecordsDisplay();
 async function init() {
     // Initially hide modal and lock scrolling (will be updated after auth check)
     document.body.classList.add('modal-open');
+    updateModalUIState();
     
     // Check authentication first (before locking UI)
     const authenticated = await checkAuth();
@@ -534,6 +536,7 @@ async function init() {
     if (authenticated) {
         // User is authenticated - don't show modal, unlock scrolling
         document.body.classList.remove('modal-open');
+        updateModalUIState();
         await loadPortfolioFromServer();
         updateUserUI();
         
@@ -551,6 +554,7 @@ async function init() {
     } else {
         // User not authenticated - show modal and lock scrolling
         document.body.classList.add('modal-open');
+        updateModalUIState();
         // Fallback to localStorage for non-authenticated users
         portfolio = JSON.parse(localStorage.getItem('cryptoPortfolio')) || [];
         portfolioStats = loadPortfolioStats();
@@ -601,6 +605,9 @@ function setupEventListeners() {
     addCoinBtn.addEventListener('click', openModal);
     cancelBtn.addEventListener('click', closeModal);
     addBtn.addEventListener('click', addCoin);
+    if (addModalCloseBtn) {
+        addModalCloseBtn.addEventListener('click', closeModal);
+    }
     
     // Edit modal listeners
     editCloseBtn.addEventListener('click', closeEditModal);
@@ -621,31 +628,11 @@ function setupEventListeners() {
         }
         closeConfirmModal();
     });
-    
-    confirmModal.addEventListener('click', (e) => {
-        if (e.target === confirmModal) {
-            closeConfirmModal();
-        }
-    });
-    
     // Coin search functionality
     coinSearch.addEventListener('input', debounce(handleCoinSearch, 300));
     coinSearch.addEventListener('focus', () => {
         if (coinSearch.value.length >= 2) {
             handleCoinSearch({ target: coinSearch });
-        }
-    });
-    
-    // Close modal on outside click
-    modal.addEventListener('click', (e) => {
-        if (e.target === modal) {
-            closeModal();
-        }
-    });
-    
-    editModal.addEventListener('click', (e) => {
-        if (e.target === editModal) {
-            closeEditModal();
         }
     });
     
@@ -714,14 +701,6 @@ function setupEventListeners() {
         avatarUploadBtn.addEventListener('click', async (e) => {
             e.preventDefault();
             await uploadAvatar();
-        });
-    }
-
-    if (avatarModal) {
-        avatarModal.addEventListener('click', (e) => {
-            if (e.target === avatarModal) {
-                closeAvatarModal();
-            }
         });
     }
 
@@ -825,6 +804,8 @@ function setupEventListeners() {
     if (changePasswordBtn) {
         changePasswordBtn.addEventListener('click', () => {
             changePasswordModal?.classList.remove('hidden');
+            document.body.classList.add('modal-open');
+            updateModalUIState();
             if (currentPassword) currentPassword.value = '';
             if (newPassword) newPassword.value = '';
             if (confirmNewPassword) confirmNewPassword.value = '';
@@ -884,6 +865,10 @@ function setupEventListeners() {
         if (e.key === 'Escape') {
             if (authModal && !authModal.classList.contains('hidden') && isAuthenticated) {
                 authModal.classList.add('hidden');
+                if (!isBodyModalLockNeeded()) {
+                    document.body.classList.remove('modal-open');
+                }
+                updateModalUIState();
             }
             if (changePasswordModal && !changePasswordModal.classList.contains('hidden')) {
                 closeChangePasswordModal();
@@ -895,14 +880,6 @@ function setupEventListeners() {
         }
     });
     
-    // Close change password modal on outside click
-    if (changePasswordModal) {
-        changePasswordModal.addEventListener('click', (e) => {
-            if (e.target === changePasswordModal) {
-                closeChangePasswordModal();
-            }
-        });
-    }
 }
 
 function closeChangePasswordModal() {
@@ -914,6 +891,10 @@ function closeChangePasswordModal() {
     if (confirmNewPassword) confirmNewPassword.value = '';
     if (changePasswordError) changePasswordError.style.display = 'none';
     if (changePasswordStatus) changePasswordStatus.style.display = 'none';
+    if (!isBodyModalLockNeeded()) {
+        document.body.classList.remove('modal-open');
+    }
+    updateModalUIState();
 }
 
 function showChangePasswordError(message) {
@@ -994,6 +975,18 @@ function isBodyModalLockNeeded() {
     return trackedModals.some(el => el && !el.classList.contains('hidden'));
 }
 
+function updateModalUIState() {
+    const shouldLockHeader = isBodyModalLockNeeded();
+    document.body.classList.toggle('modal-header-hidden', shouldLockHeader);
+    if (addCoinBtn) {
+        addCoinBtn.disabled = shouldLockHeader;
+        addCoinBtn.setAttribute('aria-disabled', shouldLockHeader ? 'true' : 'false');
+    }
+    if (shouldLockHeader && userName) {
+        userName.blur();
+    }
+}
+
 function resetAvatarModal() {
     selectedAvatarFile = null;
     clearAvatarError();
@@ -1014,6 +1007,7 @@ function openAvatarModal() {
     resetAvatarModal();
     avatarModal.classList.remove('hidden');
     document.body.classList.add('modal-open');
+    updateModalUIState();
 }
 
 function closeAvatarModal() {
@@ -1023,6 +1017,7 @@ function closeAvatarModal() {
         document.body.classList.remove('modal-open');
     }
     selectedAvatarFile = null;
+    updateModalUIState();
 }
 
 function handleAvatarFileSelection(event) {
@@ -1117,7 +1112,9 @@ function updateUserUI() {
         if (userInfo) userInfo.style.display = 'block';
         if (authModal) authModal.classList.add('hidden');
         if (addCoinBtn) addCoinBtn.style.display = 'block';
-        document.body.classList.remove('modal-open');
+        if (!isBodyModalLockNeeded()) {
+            document.body.classList.remove('modal-open');
+        }
         if (authPassword) authPassword.value = '';
     } else {
         if (userInfo) userInfo.style.display = 'none';
@@ -1126,6 +1123,7 @@ function updateUserUI() {
         document.body.classList.add('modal-open');
         if (authPassword) authPassword.value = '';
     }
+    updateModalUIState();
 }
 
 function showAuthError(message) {
@@ -1607,6 +1605,20 @@ function formatPortfolioRecord(value) {
     return '$' + value.toLocaleString('en-US', options);
 }
 
+function formatEULocalDate(dateInput) {
+    const date = dateInput instanceof Date ? dateInput : new Date(dateInput);
+    
+    if (Number.isNaN(date.getTime())) {
+        return '';
+    }
+    
+    return date.toLocaleDateString('en-GB', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric'
+    });
+}
+
 function updatePortfolioRecordsDisplay() {
     console.log('updatePortfolioRecordsDisplay called with stats:', {
         highestValue: portfolioStats.highestValue,
@@ -1622,15 +1634,14 @@ function updatePortfolioRecordsDisplay() {
         const highestTimestampEl = document.getElementById('highestValueTimestamp');
         if (highestTimestampEl) {
             if (portfolioStats.highestValueTimestamp) {
-                const date = new Date(portfolioStats.highestValueTimestamp);
-                const formattedDate = date.toLocaleDateString('en-US', { 
-                    year: 'numeric', 
-                    month: '2-digit', 
-                    day: '2-digit' 
-                });
-                highestTimestampEl.setAttribute('title', `Recorded on ${formattedDate}`);
-                highestTimestampEl.style.display = 'inline-block';
-                console.log('Showing highest timestamp icon with date:', formattedDate);
+                const formattedDate = formatEULocalDate(portfolioStats.highestValueTimestamp);
+                if (formattedDate) {
+                    highestTimestampEl.setAttribute('title', `Recorded on ${formattedDate}`);
+                    highestTimestampEl.style.display = 'inline-block';
+                    console.log('Showing highest timestamp icon with date:', formattedDate);
+                } else {
+                    highestTimestampEl.style.display = 'none';
+                }
             } else {
                 highestTimestampEl.style.display = 'none';
                 console.log('Hiding highest timestamp icon (no timestamp)');
@@ -1646,15 +1657,14 @@ function updatePortfolioRecordsDisplay() {
         const lowestTimestampEl = document.getElementById('lowestValueTimestamp');
         if (lowestTimestampEl) {
             if (portfolioStats.lowestValueTimestamp) {
-                const date = new Date(portfolioStats.lowestValueTimestamp);
-                const formattedDate = date.toLocaleDateString('en-US', { 
-                    year: 'numeric', 
-                    month: '2-digit', 
-                    day: '2-digit' 
-                });
-                lowestTimestampEl.setAttribute('title', `Recorded on ${formattedDate}`);
-                lowestTimestampEl.style.display = 'inline-block';
-                console.log('Showing lowest timestamp icon with date:', formattedDate);
+                const formattedDate = formatEULocalDate(portfolioStats.lowestValueTimestamp);
+                if (formattedDate) {
+                    lowestTimestampEl.setAttribute('title', `Recorded on ${formattedDate}`);
+                    lowestTimestampEl.style.display = 'inline-block';
+                    console.log('Showing lowest timestamp icon with date:', formattedDate);
+                } else {
+                    lowestTimestampEl.style.display = 'none';
+                }
             } else {
                 lowestTimestampEl.style.display = 'none';
                 console.log('Hiding lowest timestamp icon (no timestamp)');
@@ -1849,17 +1859,25 @@ function updateLastUpdated() {
 
 // Modal functions
 function openModal() {
+    if (!modal) return;
     closeMobileMenu();
     modal.classList.remove('hidden');
+    document.body.classList.add('modal-open');
+    updateModalUIState();
 }
 
 function closeModal() {
+    if (!modal) return;
     modal.classList.add('hidden');
     quantityInput.value = '';
     coinSearch.value = '';
     coinSelect.value = '';
     coinSuggestions.style.display = 'none';
     coinSuggestions.innerHTML = '';
+    if (!isBodyModalLockNeeded()) {
+        document.body.classList.remove('modal-open');
+    }
+    updateModalUIState();
 }
 
 // Fetch coin image from CoinGecko
@@ -1971,6 +1989,8 @@ function openEditModal(coinId) {
     editQuantityInput.value = coin.quantity;
     
     editModal.classList.remove('hidden');
+    document.body.classList.add('modal-open');
+    updateModalUIState();
 }
 
 // Close edit modal
@@ -1979,6 +1999,10 @@ function closeEditModal() {
     editCoinId.value = '';
     editCoinName.value = '';
     editQuantityInput.value = '';
+    if (!isBodyModalLockNeeded()) {
+        document.body.classList.remove('modal-open');
+    }
+    updateModalUIState();
 }
 
 // Update coin quantity
@@ -2038,12 +2062,18 @@ function showConfirmDialog(message, callback) {
     confirmMessage.textContent = message;
     confirmCallback = callback;
     confirmModal.classList.remove('hidden');
+    document.body.classList.add('modal-open');
+    updateModalUIState();
 }
 
 function closeConfirmModal() {
     confirmModal.classList.add('hidden');
     confirmCallback = null;
     confirmMessage.textContent = '';
+    if (!isBodyModalLockNeeded()) {
+        document.body.classList.remove('modal-open');
+    }
+    updateModalUIState();
 }
 
 // Make openEditModal available globally
@@ -2186,7 +2216,7 @@ function updateCountdown() {
     if (refreshTimerEl) {
         const minutes = Math.floor(countdownSeconds / 60);
         const seconds = countdownSeconds % 60;
-        refreshTimerEl.textContent = `Next refresh in ${minutes}:${seconds.toString().padStart(2, '0')}`;
+        refreshTimerEl.textContent = `${minutes}:${seconds.toString().padStart(2, '0')}`;
     }
 }
 
