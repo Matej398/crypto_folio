@@ -914,8 +914,10 @@ body.mobile-menu-open .mobile-menu-toggle .mobile-menu-close-icon {
 
 .footer-left {
     display: flex;
-    flex-direction: column;
-    gap: 4px;
+    flex-direction: row;
+    align-items: center;
+    gap: 20px;
+    flex-wrap: wrap;
 }
 
 .footer-right {
@@ -964,6 +966,34 @@ body.mobile-menu-open .mobile-menu-toggle .mobile-menu-close-icon {
     align-items: center;
     gap: 6px;
     font-size: 0.75rem;
+}
+
+.coin-prices {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+
+.coin-price-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.coin-icon {
+    width: 16px;
+    height: 16px;
+    object-fit: contain;
+    filter: grayscale(100%) contrast(1.2);
+}
+
+.coin-price-value {
+    color: var(--text-primary);
+    font-size: 0.75rem;
+    font-weight: 500;
+    opacity: 0.8;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
 }
 
 .api-label {
@@ -1451,22 +1481,33 @@ body.modal-header-hidden .user-dropdown {
         gap: 10px;
     }
 
-    .footer-left,
+    .footer-left {
+        width: 100%;
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 8px;
+    }
+
     .footer-right {
         width: 100%;
+        justify-content: flex-start;
     }
 
     .api-stats {
         flex-direction: row;
         gap: 16px;
         width: 100%;
-        justify-content: space-between;
+        justify-content: flex-start;
         flex-wrap: wrap;
     }
 
     .refresh-info {
         width: 100%;
         justify-content: flex-start;
+    }
+
+    .coin-prices {
+        gap: 12px;
     }
 }
 

@@ -692,6 +692,9 @@ async function init() {
     // Initialize countdown display
     updateCountdown();
     
+    // Fetch BTC/ETH prices for footer
+    updateFooterCoinPrices();
+    
     // Always render portfolio first, even without prices
     renderPortfolio();
     await loadHistorySnapshots();
@@ -1576,6 +1579,33 @@ async function loadAvailableCoins() {
     }
 }
 
+// Fetch and update BTC/ETH prices in footer
+async function updateFooterCoinPrices() {
+    try {
+        const response = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=bitcoin,ethereum&vs_currencies=usd');
+        
+        if (!response.ok) {
+            return; // Silently fail - don't break the app
+        }
+        
+        const data = await response.json();
+        
+        const btcPriceEl = document.getElementById('btcPrice')?.querySelector('.coin-price-value');
+        const ethPriceEl = document.getElementById('ethPrice')?.querySelector('.coin-price-value');
+        
+        if (btcPriceEl && data.bitcoin?.usd) {
+            btcPriceEl.textContent = `$${data.bitcoin.usd.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+        }
+        
+        if (ethPriceEl && data.ethereum?.usd) {
+            ethPriceEl.textContent = `$${data.ethereum.usd.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+        }
+    } catch (error) {
+        console.error('Error fetching footer coin prices:', error);
+        // Silently fail - don't break the app
+    }
+}
+
 // Fetch prices from CoinGecko API
 async function updatePrices() {
     if (portfolio.length === 0) {
@@ -2333,8 +2363,12 @@ function startAutoRefresh() {
     
     // Refresh every 1 minute (60000 ms)
     refreshInterval = setInterval(() => {
-        if (isTabVisible && portfolio.length > 0) {
-            updatePrices();
+        if (isTabVisible) {
+            if (portfolio.length > 0) {
+                updatePrices();
+            }
+            // Always update footer BTC/ETH prices
+            updateFooterCoinPrices();
             countdownSeconds = 60; // Reset countdown
         }
     }, 60000);
