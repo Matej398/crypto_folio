@@ -352,6 +352,7 @@ let countdownSeconds = 60;
 let isTabVisible = true;
 let recordUpdateTimeout = null;
 const RECORD_UPDATE_DELAY = 5 * 60 * 1000; // 5 minutes in milliseconds
+const HISTORY_PER_PAGE = 10;
 let portfolioStats = { 
     highestValue: null, 
     lowestValue: null,
@@ -363,6 +364,7 @@ const AVATAR_ALLOWED_MIME_TYPES = ['image/png', 'image/jpeg', 'image/webp'];
 const AVATAR_MAX_FILE_SIZE = 1024 * 1024; // 1MB
 let selectedAvatarFile = null;
 let historyData = [];
+let historyPagination = { page: 1, perPage: HISTORY_PER_PAGE, total: 0, isMock: true };
 const mockHistoryData = [
     {
         date: '2025-01-10',
@@ -615,6 +617,7 @@ const historyTabBtn = document.getElementById('historyTabBtn');
 const holdingsSection = document.getElementById('holdingsSection');
 const historySection = document.getElementById('historySection');
 const historyList = document.getElementById('historyList');
+const historyPaginationEl = document.getElementById('historyPagination');
 
 function isMobileViewport() {
     return window.matchMedia('(max-width: 768px)').matches;
@@ -813,6 +816,19 @@ function setupEventListeners() {
             const card = e.target.closest('.history-card');
             if (!card) return;
             card.classList.toggle('expanded');
+        });
+    }
+    if (historyPaginationEl) {
+        historyPaginationEl.addEventListener('click', (e) => {
+            const control = e.target.closest('[data-page]');
+            if (!control || control.hasAttribute('disabled')) return;
+            const requestedPage = parseInt(control.getAttribute('data-page'), 10);
+            if (!Number.isFinite(requestedPage) || requestedPage < 1 || requestedPage === historyPagination.page) {
+                return;
+            }
+            loadHistorySnapshots(requestedPage).catch(error => {
+                console.error('Failed to change history page:', error);
+            });
         });
     }
 
@@ -2359,14 +2375,24 @@ function updateCountdown() {
     }
 }
 
-async function loadHistorySnapshots() {
+async function loadHistorySnapshots(page = 1) {
     if (!historyList) {
         historyData = mockHistoryData;
+        historyPagination = {
+            page: 1,
+            perPage: HISTORY_PER_PAGE,
+            total: mockHistoryData.length,
+            isMock: true,
+        };
         renderHistoryList();
         return;
     }
+    const query = new URLSearchParams({
+        page: String(page),
+        per_page: String(historyPagination.perPage || HISTORY_PER_PAGE),
+    });
     try {
-        const response = await fetch('api/history.php', {
+        const response = await fetch(`api/history.php?${query.toString()}`, {
             credentials: 'include',
             headers: { 'Accept': 'application/json' }
         });
@@ -2378,12 +2404,30 @@ async function loadHistorySnapshots() {
             throw new Error(payload?.error || 'History API returned an error');
         }
         historyData = Array.isArray(payload.history) ? payload.history : [];
+        historyPagination = {
+            page: payload.page || page,
+            perPage: payload.perPage || HISTORY_PER_PAGE,
+            total: payload.total ?? historyData.length,
+            isMock: false,
+        };
         if (historyData.length === 0) {
             historyData = mockHistoryData;
+            historyPagination = {
+                page: 1,
+                perPage: HISTORY_PER_PAGE,
+                total: mockHistoryData.length,
+                isMock: true,
+            };
         }
     } catch (error) {
         console.error('Failed to load history snapshots:', error);
         historyData = mockHistoryData;
+        historyPagination = {
+            page: 1,
+            perPage: HISTORY_PER_PAGE,
+            total: mockHistoryData.length,
+            isMock: true,
+        };
     }
     renderHistoryList();
 }
@@ -2407,6 +2451,7 @@ function renderHistoryList() {
     const activeHistory = (historyData && historyData.length > 0) ? historyData : mockHistoryData;
     if (!activeHistory || activeHistory.length === 0) {
         historyList.innerHTML = '<p class="history-subtitle">History data coming soon.</p>';
+        renderHistoryPagination();
         return;
     }
     const markup = activeHistory.map((entry, index) => {
@@ -2471,6 +2516,30 @@ function renderHistoryList() {
         `;
     }).join('');
     historyList.innerHTML = markup || '<p class="history-subtitle">History data coming soon.</p>';
+    renderHistoryPagination();
+}
+
+function renderHistoryPagination() {
+    if (!historyPaginationEl) return;
+    const { total, perPage, page, isMock } = historyPagination;
+    const totalPages = perPage > 0 ? Math.ceil(total / perPage) : 0;
+    if (isMock || totalPages <= 1 || total < perPage || total < HISTORY_PER_PAGE) {
+        historyPaginationEl.innerHTML = '';
+        historyPaginationEl.classList.add('section-hidden');
+        return;
+    }
+
+    historyPaginationEl.classList.remove('section-hidden');
+    const prevPage = page - 1;
+    const nextPage = page + 1;
+    const prevDisabled = page <= 1 ? 'disabled' : '';
+    const nextDisabled = page >= totalPages ? 'disabled' : '';
+
+    historyPaginationEl.innerHTML = `
+        <button class="history-page-btn" data-page="${prevPage}" ${prevDisabled}>Prev</button>
+        <span class="history-page-status">Page ${page} / ${totalPages}</span>
+        <button class="history-page-btn" data-page="${nextPage}" ${nextDisabled}>Next</button>
+    `;
 }
 
 // Initialize on page load

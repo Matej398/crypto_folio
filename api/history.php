@@ -9,47 +9,68 @@ if (!isset($_SESSION['user_id'])) {
 }
 
 $userId = (int)$_SESSION['user_id'];
-$limit = isset($_GET['limit']) ? (int)$_GET['limit'] : 30;
-$limit = max(1, min($limit, 90));
+$page = max(1, (int)($_GET['page'] ?? 1));
+$perPage = max(1, min((int)($_GET['per_page'] ?? 10), 50));
+$offset = ($page - 1) * $perPage;
 
 try {
     $pdo = getDBConnection();
-    $stmt = $pdo->prepare("
-        SELECT id, snapshot_date, total_value, change_24h, daily_high, daily_low, created_at
-        FROM portfolio_history
-        WHERE user_id = ?
-        ORDER BY snapshot_date DESC
-        LIMIT {$limit}
-    ");
-    $stmt->execute([$userId]);
-    $historyRows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    $countStmt = $pdo->prepare("SELECT COUNT(*) FROM portfolio_history WHERE user_id = :user_id");
+    $countStmt->execute(['user_id' => $userId]);
+    $total = (int)$countStmt->fetchColumn();
 
-    if (!$historyRows) {
-        echo json_encode(['success' => true, 'history' => []]);
+    if ($total === 0) {
+        echo json_encode([
+            'success' => true,
+            'history' => [],
+            'page' => $page,
+            'perPage' => $perPage,
+            'total' => 0,
+        ]);
         exit;
     }
 
+    if ($offset >= $total) {
+        $page = (int)ceil($total / $perPage);
+        $offset = max(0, ($page - 1) * $perPage);
+    }
+
+    $stmt = $pdo->prepare("
+        SELECT id, snapshot_date, total_value, change_24h, daily_high, daily_low, created_at
+        FROM portfolio_history
+        WHERE user_id = :user_id
+        ORDER BY snapshot_date DESC
+        LIMIT :limit OFFSET :offset
+    ");
+    $stmt->bindValue(':user_id', $userId, PDO::PARAM_INT);
+    $stmt->bindValue(':limit', $perPage, PDO::PARAM_INT);
+    $stmt->bindValue(':offset', $offset, PDO::PARAM_INT);
+    $stmt->execute();
+    $historyRows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
     $historyIds = array_column($historyRows, 'id');
     $placeholders = implode(',', array_fill(0, count($historyIds), '?'));
-    $coinStmt = $pdo->prepare("
-        SELECT history_id, coin_id, symbol, name, quantity, price_usd, value_usd, change_24h, image_url
-        FROM portfolio_history_coins
-        WHERE history_id IN ($placeholders)
-        ORDER BY value_usd DESC
-    ");
-    $coinStmt->execute($historyIds);
     $coinsByHistory = [];
-    foreach ($coinStmt as $coinRow) {
-        $coinsByHistory[$coinRow['history_id']][] = [
-            'coinId' => $coinRow['coin_id'],
-            'symbol' => $coinRow['symbol'],
-            'name' => $coinRow['name'],
-            'quantity' => (float)$coinRow['quantity'],
-            'price' => (float)$coinRow['price_usd'],
-            'value' => (float)$coinRow['value_usd'],
-            'change24h' => (float)$coinRow['change_24h'],
-            'image' => $coinRow['image_url'],
-        ];
+    if (!empty($historyIds)) {
+        $coinStmt = $pdo->prepare("
+            SELECT history_id, coin_id, symbol, name, quantity, price_usd, value_usd, change_24h, image_url
+            FROM portfolio_history_coins
+            WHERE history_id IN ($placeholders)
+            ORDER BY value_usd DESC
+        ");
+        $coinStmt->execute($historyIds);
+        foreach ($coinStmt as $coinRow) {
+            $coinsByHistory[$coinRow['history_id']][] = [
+                'coinId' => $coinRow['coin_id'],
+                'symbol' => $coinRow['symbol'],
+                'name' => $coinRow['name'],
+                'quantity' => (float)$coinRow['quantity'],
+                'price' => (float)$coinRow['price_usd'],
+                'value' => (float)$coinRow['value_usd'],
+                'change24h' => (float)$coinRow['change_24h'],
+                'image' => $coinRow['image_url'],
+            ];
+        }
     }
 
     $history = array_map(function ($row) use ($coinsByHistory) {
@@ -65,7 +86,13 @@ try {
         ];
     }, $historyRows);
 
-    echo json_encode(['success' => true, 'history' => $history]);
+    echo json_encode([
+        'success' => true,
+        'history' => $history,
+        'page' => $page,
+        'perPage' => $perPage,
+        'total' => $total,
+    ]);
 } catch (Throwable $e) {
     http_response_code(500);
     echo json_encode(['success' => false, 'error' => $e->getMessage()]);

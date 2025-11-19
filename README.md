@@ -102,6 +102,7 @@ crypto_folio/
 
 4. **History API**  
    - Frontend calls `api/history.php` (authenticated) to fetch stored snapshots.
+   - Supports `page` and `per_page` query params (defaults to 10 per page).
 
 ## Troubleshooting
 
