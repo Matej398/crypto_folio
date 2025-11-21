@@ -695,6 +695,9 @@ async function init() {
     // Fetch BTC/ETH prices for footer
     updateFooterCoinPrices();
     
+    // Fetch Fear & Greed Index
+    updateFearGreedIndex();
+    
     // Always render portfolio first, even without prices
     renderPortfolio();
     await loadHistorySnapshots();
@@ -816,6 +819,15 @@ function setupEventListeners() {
     }
     if (historyList) {
         historyList.addEventListener('click', (e) => {
+            // Don't toggle if clicking on notes section
+            if (e.target.closest('.history-notes-section') || 
+                e.target.closest('.history-notes-toggle') ||
+                e.target.closest('.history-notes-content') ||
+                e.target.closest('.history-notes-input') ||
+                e.target.closest('.history-notes-save') ||
+                e.target.closest('.history-notes-cancel')) {
+                return;
+            }
             const card = e.target.closest('.history-card');
             if (!card) return;
             card.classList.toggle('expanded');
@@ -1606,6 +1618,72 @@ async function updateFooterCoinPrices() {
     }
 }
 
+// Fetch and update Fear & Greed Index
+async function updateFearGreedIndex() {
+    try {
+        const response = await fetch('https://api.alternative.me/fng/');
+        
+        if (!response.ok) {
+            console.error('Fear & Greed API response not ok:', response.status);
+            return;
+        }
+        
+        const data = await response.json();
+        console.log('Fear & Greed API data:', data);
+        
+        if (data && data.data && Array.isArray(data.data) && data.data.length > 0) {
+            const indexData = data.data[0];
+            const value = parseInt(indexData.value, 10);
+            const classification = indexData.value_classification || '';
+            
+            const valueEl = document.getElementById('fearGreedValue');
+            const classificationEl = document.getElementById('fearGreedIndex');
+            const classificationTextEl = document.getElementById('fearGreedClassification');
+            const gaugeNeedle = document.querySelector('.gauge-needle');
+            
+            if (valueEl && !isNaN(value)) {
+                valueEl.textContent = value;
+            }
+            
+            if (classificationTextEl && classification) {
+                classificationTextEl.textContent = classification;
+            }
+            
+            // Update gauge needle rotation (0-100 maps to -90 to +90 degrees)
+            // 0 (Extreme Fear) = -90° (left), 50 (Neutral) = 0° (up), 100 (Extreme Greed) = +90° (right)
+            if (gaugeNeedle && !isNaN(value)) {
+                const rotation = (value / 100) * 180 - 90; // 0-100 -> -90 to +90 degrees
+                gaugeNeedle.style.transform = `rotate(${rotation}deg)`;
+                gaugeNeedle.style.transformOrigin = '12px 12px';
+            }
+            
+            if (classificationEl) {
+                // Remove existing classification classes
+                classificationEl.classList.remove(
+                    'extreme-fear', 'fear', 'neutral', 'greed', 'extreme-greed'
+                );
+                
+                // Add appropriate class based on value
+                if (value >= 0 && value <= 24) {
+                    classificationEl.classList.add('extreme-fear');
+                } else if (value >= 25 && value <= 44) {
+                    classificationEl.classList.add('fear');
+                } else if (value >= 45 && value <= 55) {
+                    classificationEl.classList.add('neutral');
+                } else if (value >= 56 && value <= 75) {
+                    classificationEl.classList.add('greed');
+                } else if (value >= 76 && value <= 100) {
+                    classificationEl.classList.add('extreme-greed');
+                }
+            }
+        } else {
+            console.error('Invalid Fear & Greed API data structure:', data);
+        }
+    } catch (error) {
+        console.error('Error fetching Fear & Greed Index:', error);
+    }
+}
+
 // Fetch prices from CoinGecko API
 async function updatePrices() {
     if (portfolio.length === 0) {
@@ -1811,6 +1889,28 @@ function formatEULocalDate(dateInput) {
     });
 }
 
+function formatEULocalDateTime(dateInput) {
+    const date = dateInput instanceof Date ? dateInput : new Date(dateInput);
+    
+    if (Number.isNaN(date.getTime())) {
+        return { date: '', time: '' };
+    }
+    
+    const formattedDate = date.toLocaleDateString('en-GB', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric'
+    });
+    
+    const formattedTime = date.toLocaleTimeString('en-GB', {
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: false
+    });
+    
+    return { date: formattedDate, time: formattedTime };
+}
+
 function updatePortfolioRecordsDisplay() {
     console.log('updatePortfolioRecordsDisplay called with stats:', {
         highestValue: portfolioStats.highestValue,
@@ -1826,11 +1926,23 @@ function updatePortfolioRecordsDisplay() {
         const highestTimestampEl = document.getElementById('highestValueTimestamp');
         if (highestTimestampEl) {
             if (portfolioStats.highestValueTimestamp) {
-                const formattedDate = formatEULocalDate(portfolioStats.highestValueTimestamp);
-                if (formattedDate) {
-                    highestTimestampEl.setAttribute('title', `Recorded on ${formattedDate}`);
+                const dateTime = formatEULocalDateTime(portfolioStats.highestValueTimestamp);
+                if (dateTime.date) {
+                    highestTimestampEl.setAttribute('data-date', dateTime.date);
+                    highestTimestampEl.setAttribute('data-time', dateTime.time);
+                    highestTimestampEl.setAttribute('title', `Recorded on ${dateTime.date} at ${dateTime.time}`);
+                    
+                    // Create or update custom tooltip
+                    let tooltip = highestTimestampEl.querySelector('.timestamp-tooltip');
+                    if (!tooltip) {
+                        tooltip = document.createElement('div');
+                        tooltip.className = 'timestamp-tooltip';
+                        highestTimestampEl.appendChild(tooltip);
+                    }
+                    tooltip.innerHTML = `Recorded on <span class="timestamp-tooltip-date">${dateTime.date}</span> <span class="timestamp-tooltip-time" style="color: #8a8a8f;">at ${dateTime.time}</span>`;
+                    
                     highestTimestampEl.style.display = 'inline-block';
-                    console.log('Showing highest timestamp icon with date:', formattedDate);
+                    console.log('Showing highest timestamp icon with date:', dateTime.date, 'time:', dateTime.time);
                 } else {
                     highestTimestampEl.style.display = 'none';
                 }
@@ -1849,11 +1961,23 @@ function updatePortfolioRecordsDisplay() {
         const lowestTimestampEl = document.getElementById('lowestValueTimestamp');
         if (lowestTimestampEl) {
             if (portfolioStats.lowestValueTimestamp) {
-                const formattedDate = formatEULocalDate(portfolioStats.lowestValueTimestamp);
-                if (formattedDate) {
-                    lowestTimestampEl.setAttribute('title', `Recorded on ${formattedDate}`);
+                const dateTime = formatEULocalDateTime(portfolioStats.lowestValueTimestamp);
+                if (dateTime.date) {
+                    lowestTimestampEl.setAttribute('data-date', dateTime.date);
+                    lowestTimestampEl.setAttribute('data-time', dateTime.time);
+                    lowestTimestampEl.setAttribute('title', `Recorded on ${dateTime.date} at ${dateTime.time}`);
+                    
+                    // Create or update custom tooltip
+                    let tooltip = lowestTimestampEl.querySelector('.timestamp-tooltip');
+                    if (!tooltip) {
+                        tooltip = document.createElement('div');
+                        tooltip.className = 'timestamp-tooltip';
+                        lowestTimestampEl.appendChild(tooltip);
+                    }
+                    tooltip.innerHTML = `Recorded on <span class="timestamp-tooltip-date">${dateTime.date}</span> <span class="timestamp-tooltip-time" style="color: #8a8a8f;">at ${dateTime.time}</span>`;
+                    
                     lowestTimestampEl.style.display = 'inline-block';
-                    console.log('Showing lowest timestamp icon with date:', formattedDate);
+                    console.log('Showing lowest timestamp icon with date:', dateTime.date, 'time:', dateTime.time);
                 } else {
                     lowestTimestampEl.style.display = 'none';
                 }
@@ -2369,6 +2493,8 @@ function startAutoRefresh() {
             }
             // Always update footer BTC/ETH prices
             updateFooterCoinPrices();
+            // Update Fear & Greed Index
+            updateFearGreedIndex();
             countdownSeconds = 60; // Reset countdown
         }
     }, 60000);
@@ -2487,6 +2613,12 @@ function switchPortfolioTab(target) {
     historyTabBtn?.classList.toggle('active', showHistory);
 }
 
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
 function renderHistoryList() {
     if (!historyList) return;
     const activeHistory = (historyData && historyData.length > 0) ? historyData : mockHistoryData;
@@ -2552,12 +2684,189 @@ function renderHistoryList() {
                     <div class="history-coins">
                         ${coinsMarkup}
                     </div>
+                    <div class="history-notes-section">
+                        <div class="history-notes-header">
+                            <button class="history-notes-toggle" data-date="${entry.date}" title="Add or edit notes">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                                    <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                                </svg>
+                                <span>Notes</span>
+                            </button>
+                        </div>
+                        <div class="history-notes-content" data-date="${entry.date}" style="display: ${entry.notes ? 'block' : 'none'};">
+                            <textarea class="history-notes-input" data-date="${entry.date}" placeholder="Add your sentiment notes here... (e.g., Feeling optimistic about the market, considering taking profits soon)" style="display: none;">${entry.notes || ''}</textarea>
+                            <div class="history-notes-actions" style="display: none;">
+                                <button class="history-notes-save" data-date="${entry.date}">Save</button>
+                                <button class="history-notes-cancel" data-date="${entry.date}">Cancel</button>
+                            </div>
+                            ${entry.notes ? `<div class="history-notes-display">${escapeHtml(entry.notes)}</div>` : ''}
+                        </div>
+                    </div>
                 </div>
             </article>
         `;
     }).join('');
     historyList.innerHTML = markup || '<p class="history-subtitle">History data coming soon.</p>';
     renderHistoryPagination();
+    setupHistoryNotesHandlers();
+}
+
+async function saveHistoryNotes(date, notes) {
+    try {
+        const apiBase = getApiBase();
+        const response = await fetch(`${apiBase}/history.php`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            credentials: 'include',
+            body: JSON.stringify({
+                date: date,
+                notes: notes || null
+            })
+        });
+        
+        if (!response.ok) {
+            const errorData = await response.json().catch(() => ({}));
+            throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
+        }
+        
+        const data = await response.json();
+        if (!data.success) {
+            throw new Error(data.error || 'Failed to save notes');
+        }
+        
+        return data;
+    } catch (error) {
+        console.error('Error saving history notes:', error);
+        throw error;
+    }
+}
+
+function setupHistoryNotesHandlers() {
+    if (!historyList) return;
+    
+    // Toggle notes editor
+    historyList.addEventListener('click', (e) => {
+            const toggleBtn = e.target.closest('.history-notes-toggle');
+        if (toggleBtn) {
+            e.stopPropagation();
+            const date = toggleBtn.getAttribute('data-date');
+            const notesContent = historyList.querySelector(`.history-notes-content[data-date="${date}"]`);
+            if (notesContent) {
+                const textarea = notesContent.querySelector('.history-notes-input');
+                const display = notesContent.querySelector('.history-notes-display');
+                const actions = notesContent.querySelector('.history-notes-actions');
+                const isEditing = textarea && textarea.style.display !== 'none';
+                
+                // Get current notes from the entry
+                const entry = historyData.find(h => h.date === date);
+                const currentNotes = entry?.notes || '';
+                
+                if (isEditing) {
+                    // Cancel editing - hide editor, show display if exists
+                    textarea.style.display = 'none';
+                    if (actions) actions.style.display = 'none';
+                    if (display) display.style.display = 'block';
+                    if (!display && !currentNotes) {
+                        notesContent.style.display = 'none';
+                    }
+                } else {
+                    // Start editing - show editor, hide display
+                    notesContent.style.display = 'block';
+                    if (textarea) {
+                        textarea.style.display = 'block';
+                        textarea.value = currentNotes;
+                        textarea.focus();
+                    }
+                    if (actions) actions.style.display = 'flex';
+                    if (display) display.style.display = 'none';
+                }
+            }
+        }
+        
+        // Save notes
+        const saveBtn = e.target.closest('.history-notes-save');
+        if (saveBtn) {
+            e.stopPropagation();
+            const date = saveBtn.getAttribute('data-date');
+            const notesContent = historyList.querySelector(`.history-notes-content[data-date="${date}"]`);
+            const textarea = notesContent?.querySelector('.history-notes-input');
+            if (textarea) {
+                const note = textarea.value.trim();
+                const saveButton = saveBtn;
+                const originalText = saveButton.textContent;
+                saveButton.disabled = true;
+                saveButton.textContent = 'Saving...';
+                
+                // Save to server
+                saveHistoryNotes(date, note).then(() => {
+                    // Update local data
+                    const entry = historyData.find(h => h.date === date);
+                    if (entry) {
+                        entry.notes = note || null;
+                    }
+                    
+                    // Update display
+                    let display = notesContent.querySelector('.history-notes-display');
+                    const actions = notesContent.querySelector('.history-notes-actions');
+                    if (note) {
+                        if (!display) {
+                            display = document.createElement('div');
+                            display.className = 'history-notes-display';
+                            notesContent.appendChild(display);
+                        }
+                        display.textContent = note;
+                        display.style.display = 'block';
+                    } else if (display) {
+                        display.remove();
+                    }
+                    textarea.style.display = 'none';
+                    if (actions) actions.style.display = 'none';
+                    if (!note && !display) {
+                        notesContent.style.display = 'none';
+                    }
+                    
+                    saveButton.disabled = false;
+                    saveButton.textContent = originalText;
+                }).catch(error => {
+                    console.error('Error saving notes:', error);
+                    alert('Failed to save notes. Please try again.');
+                    saveButton.disabled = false;
+                    saveButton.textContent = originalText;
+                });
+            }
+        }
+        
+        // Cancel editing
+        const cancelBtn = e.target.closest('.history-notes-cancel');
+        if (cancelBtn) {
+            e.stopPropagation();
+            const date = cancelBtn.getAttribute('data-date');
+            const notesContent = historyList.querySelector(`.history-notes-content[data-date="${date}"]`);
+            if (notesContent) {
+                const textarea = notesContent.querySelector('.history-notes-input');
+                const display = notesContent.querySelector('.history-notes-display');
+                const actions = notesContent.querySelector('.history-notes-actions');
+                
+                // Get current notes from the entry
+                const entry = historyData.find(h => h.date === date);
+                const currentNotes = entry?.notes || '';
+                
+                if (textarea) {
+                    textarea.value = currentNotes;
+                    textarea.style.display = 'none';
+                }
+                if (actions) actions.style.display = 'none';
+                if (display) {
+                    display.style.display = 'block';
+                } else if (!currentNotes) {
+                    notesContent.style.display = 'none';
+                }
+            }
+        }
+    });
 }
 
 function renderHistoryPagination() {
