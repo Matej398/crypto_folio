@@ -10,15 +10,21 @@ if (!isset($_SESSION['user_id'])) {
 
 $userId = (int)$_SESSION['user_id'];
 
-// Handle POST request to save notes
+// Handle POST request to add a new note
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $input = json_decode(file_get_contents('php://input'), true);
     $date = $input['date'] ?? null;
-    $notes = $input['notes'] ?? null;
+    $noteText = $input['note'] ?? null;
     
     if (!$date) {
         http_response_code(400);
         echo json_encode(['success' => false, 'error' => 'Date is required']);
+        exit;
+    }
+    
+    if (!$noteText || trim($noteText) === '') {
+        http_response_code(400);
+        echo json_encode(['success' => false, 'error' => 'Note text is required']);
         exit;
     }
     
@@ -30,21 +36,76 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $checkStmt->execute(['user_id' => $userId, 'date' => $date]);
         $historyId = $checkStmt->fetchColumn();
         
-        if ($historyId) {
-            // Update existing entry
-            $updateStmt = $pdo->prepare("UPDATE portfolio_history SET notes = :notes WHERE id = :id AND user_id = :user_id");
-            $updateStmt->execute([
-                'notes' => $notes ? trim($notes) : null,
-                'id' => $historyId,
-                'user_id' => $userId
-            ]);
-        } else {
+        if (!$historyId) {
             http_response_code(404);
             echo json_encode(['success' => false, 'error' => 'History entry not found for this date']);
             exit;
         }
         
-        echo json_encode(['success' => true, 'message' => 'Notes saved successfully']);
+        // Insert new note
+        $insertStmt = $pdo->prepare("INSERT INTO portfolio_history_notes (history_id, note_text) VALUES (:history_id, :note_text)");
+        $insertStmt->execute([
+            'history_id' => $historyId,
+            'note_text' => trim($noteText)
+        ]);
+        
+        $noteId = (int)$pdo->lastInsertId();
+        
+        // Fetch the created note with timestamp
+        $fetchStmt = $pdo->prepare("SELECT id, note_text, created_at FROM portfolio_history_notes WHERE id = :id");
+        $fetchStmt->execute(['id' => $noteId]);
+        $note = $fetchStmt->fetch(PDO::FETCH_ASSOC);
+        
+        echo json_encode([
+            'success' => true,
+            'message' => 'Note added successfully',
+            'note' => [
+                'id' => (int)$note['id'],
+                'text' => $note['note_text'],
+                'createdAt' => $note['created_at']
+            ]
+        ]);
+    } catch (Throwable $e) {
+        http_response_code(500);
+        echo json_encode(['success' => false, 'error' => $e->getMessage()]);
+    }
+    exit;
+}
+
+// Handle DELETE request to remove a note
+if ($_SERVER['REQUEST_METHOD'] === 'DELETE') {
+    $input = json_decode(file_get_contents('php://input'), true);
+    $noteId = isset($input['noteId']) ? (int)$input['noteId'] : null;
+    
+    if (!$noteId) {
+        http_response_code(400);
+        echo json_encode(['success' => false, 'error' => 'Note ID is required']);
+        exit;
+    }
+    
+    try {
+        $pdo = getDBConnection();
+        
+        // Verify the note belongs to a history entry owned by this user
+        $verifyStmt = $pdo->prepare("
+            SELECT phn.id 
+            FROM portfolio_history_notes phn
+            INNER JOIN portfolio_history ph ON ph.id = phn.history_id
+            WHERE phn.id = :note_id AND ph.user_id = :user_id
+        ");
+        $verifyStmt->execute(['note_id' => $noteId, 'user_id' => $userId]);
+        
+        if (!$verifyStmt->fetchColumn()) {
+            http_response_code(404);
+            echo json_encode(['success' => false, 'error' => 'Note not found or access denied']);
+            exit;
+        }
+        
+        // Delete the note
+        $deleteStmt = $pdo->prepare("DELETE FROM portfolio_history_notes WHERE id = :note_id");
+        $deleteStmt->execute(['note_id' => $noteId]);
+        
+        echo json_encode(['success' => true, 'message' => 'Note deleted successfully']);
     } catch (Throwable $e) {
         http_response_code(500);
         echo json_encode(['success' => false, 'error' => $e->getMessage()]);
@@ -95,7 +156,10 @@ try {
     $historyIds = array_column($historyRows, 'id');
     $placeholders = implode(',', array_fill(0, count($historyIds), '?'));
     $coinsByHistory = [];
+    $notesByHistory = [];
+    
     if (!empty($historyIds)) {
+        // Fetch coins
         $coinStmt = $pdo->prepare("
             SELECT history_id, coin_id, symbol, name, quantity, price_usd, value_usd, change_24h, image_url
             FROM portfolio_history_coins
@@ -115,9 +179,25 @@ try {
                 'image' => $coinRow['image_url'],
             ];
         }
+        
+        // Fetch notes
+        $notesStmt = $pdo->prepare("
+            SELECT history_id, id, note_text, created_at
+            FROM portfolio_history_notes
+            WHERE history_id IN ($placeholders)
+            ORDER BY created_at DESC
+        ");
+        $notesStmt->execute($historyIds);
+        foreach ($notesStmt as $noteRow) {
+            $notesByHistory[$noteRow['history_id']][] = [
+                'id' => (int)$noteRow['id'],
+                'text' => $noteRow['note_text'],
+                'createdAt' => $noteRow['created_at'],
+            ];
+        }
     }
 
-    $history = array_map(function ($row) use ($coinsByHistory) {
+    $history = array_map(function ($row) use ($coinsByHistory, $notesByHistory) {
         $historyId = $row['id'];
         return [
             'id' => (int)$historyId,
@@ -126,7 +206,7 @@ try {
             'change24h' => (float)$row['change_24h'],
             'dailyHigh' => $row['daily_high'] !== null ? (float)$row['daily_high'] : null,
             'dailyLow' => $row['daily_low'] !== null ? (float)$row['daily_low'] : null,
-            'notes' => $row['notes'] ?? null,
+            'notes' => $notesByHistory[$historyId] ?? [],
             'fearGreedIndex' => $row['fear_greed_index'] !== null ? (int)$row['fear_greed_index'] : null,
             'coins' => $coinsByHistory[$historyId] ?? [],
         ];

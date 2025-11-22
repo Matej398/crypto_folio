@@ -737,6 +737,10 @@ body.mobile-menu-open .mobile-menu-toggle .mobile-menu-close-icon {
     margin-top: 12px;
 }
 
+.history-notes-list:empty {
+    display: none;
+}
+
 .history-notes-input {
     width: 100%;
     min-height: 80px;
@@ -804,6 +808,84 @@ body.mobile-menu-open .mobile-menu-toggle .mobile-menu-close-icon {
     background: rgba(148, 163, 184, 0.1);
     border-color: rgba(148, 163, 184, 0.5);
     color: var(--text-primary);
+}
+
+.history-notes-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-bottom: 12px;
+}
+
+.history-note-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 12px;
+    background: rgba(20, 20, 26, 0.6);
+    border-radius: 8px;
+    border: 1px solid rgba(63, 63, 70, 0.2);
+    transition: all 0.2s ease;
+}
+
+.history-note-item:hover {
+    background: rgba(20, 20, 26, 0.8);
+    border-color: rgba(63, 63, 70, 0.4);
+}
+
+.history-note-content {
+    flex: 1;
+    min-width: 0;
+}
+
+.history-note-text {
+    color: var(--text-primary);
+    font-size: 0.75rem;
+    line-height: 1.5;
+    margin-bottom: 6px;
+    word-wrap: break-word;
+}
+
+.history-note-date {
+    color: var(--slate-400);
+    font-size: 0.65rem;
+    letter-spacing: 0.05em;
+    opacity: 0.7;
+}
+
+.history-note-delete {
+    flex-shrink: 0;
+    background: none;
+    border: none;
+    color: var(--slate-400);
+    cursor: pointer;
+    padding: 4px;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+    opacity: 0.6;
+}
+
+.history-note-delete:hover {
+    color: #f87171;
+    background: rgba(248, 113, 113, 0.1);
+    opacity: 1;
+}
+
+.history-note-delete:disabled {
+    opacity: 0.3;
+    cursor: not-allowed;
+}
+
+.history-note-delete svg {
+    width: 14px;
+    height: 14px;
+}
+
+.history-notes-editor {
+    margin-top: 12px;
 }
 
 .history-notes-display {

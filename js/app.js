@@ -2711,21 +2711,40 @@ function renderHistoryList() {
                     </div>
                     <div class="history-notes-section">
                         <div class="history-notes-header">
-                            <button class="history-notes-toggle" data-date="${entry.date}" title="Add or edit notes">
+                            <button class="history-notes-toggle" data-date="${entry.date}" title="Add a note">
                                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
-                                    <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                                    <path d="M12 5v14M5 12h14"></path>
                                 </svg>
-                                <span>Notes</span>
+                                <span>Add Note</span>
                             </button>
                         </div>
-                        <div class="history-notes-content" data-date="${entry.date}" style="display: ${entry.notes ? 'block' : 'none'};">
-                            <textarea class="history-notes-input" data-date="${entry.date}" placeholder="Add your sentiment notes here... (e.g., Feeling optimistic about the market, considering taking profits soon)" style="display: none;">${entry.notes || ''}</textarea>
-                            <div class="history-notes-actions" style="display: none;">
-                                <button class="history-notes-save" data-date="${entry.date}">Save</button>
-                                <button class="history-notes-cancel" data-date="${entry.date}">Cancel</button>
+                        <div class="history-notes-content" data-date="${entry.date}">
+                            <div class="history-notes-list">
+                                ${Array.isArray(entry.notes) && entry.notes.length > 0 ? entry.notes.map(note => {
+                                    const noteDate = new Date(note.createdAt);
+                                    const formattedDate = formatEULocalDate(note.createdAt) + ' ' + noteDate.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+                                    return `
+                                        <div class="history-note-item" data-note-id="${note.id}">
+                                            <div class="history-note-content">
+                                                <div class="history-note-text">${escapeHtml(note.text)}</div>
+                                                <div class="history-note-date">${formattedDate}</div>
+                                            </div>
+                                            <button class="history-note-delete" data-note-id="${note.id}" title="Delete note">
+                                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                                    <path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                                                </svg>
+                                            </button>
+                                        </div>
+                                    `;
+                                }).join('') : ''}
                             </div>
-                            ${entry.notes ? `<div class="history-notes-display">${escapeHtml(entry.notes)}</div>` : ''}
+                            <div class="history-notes-editor" data-date="${entry.date}" style="display: none;">
+                                <textarea class="history-notes-input" data-date="${entry.date}" placeholder="Add your sentiment notes here... (e.g., Feeling optimistic about the market, considering taking profits soon)"></textarea>
+                                <div class="history-notes-actions">
+                                    <button class="history-notes-save" data-date="${entry.date}">Save</button>
+                                    <button class="history-notes-cancel" data-date="${entry.date}">Cancel</button>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -2737,7 +2756,7 @@ function renderHistoryList() {
     setupHistoryNotesHandlers();
 }
 
-async function saveHistoryNotes(date, notes) {
+async function addHistoryNote(date, noteText) {
     try {
         const apiBase = getApiBase();
         const response = await fetch(`${apiBase}/history.php`, {
@@ -2748,7 +2767,7 @@ async function saveHistoryNotes(date, notes) {
             credentials: 'include',
             body: JSON.stringify({
                 date: date,
-                notes: notes || null
+                note: noteText
             })
         });
         
@@ -2759,12 +2778,43 @@ async function saveHistoryNotes(date, notes) {
         
         const data = await response.json();
         if (!data.success) {
-            throw new Error(data.error || 'Failed to save notes');
+            throw new Error(data.error || 'Failed to add note');
         }
         
         return data;
     } catch (error) {
-        console.error('Error saving history notes:', error);
+        console.error('Error adding history note:', error);
+        throw error;
+    }
+}
+
+async function deleteHistoryNote(noteId) {
+    try {
+        const apiBase = getApiBase();
+        const response = await fetch(`${apiBase}/history.php`, {
+            method: 'DELETE',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            credentials: 'include',
+            body: JSON.stringify({
+                noteId: noteId
+            })
+        });
+        
+        if (!response.ok) {
+            const errorData = await response.json().catch(() => ({}));
+            throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
+        }
+        
+        const data = await response.json();
+        if (!data.success) {
+            throw new Error(data.error || 'Failed to delete note');
+        }
+        
+        return data;
+    } catch (error) {
+        console.error('Error deleting history note:', error);
         throw error;
     }
 }
@@ -2772,92 +2822,67 @@ async function saveHistoryNotes(date, notes) {
 function setupHistoryNotesHandlers() {
     if (!historyList) return;
     
-    // Toggle notes editor
     historyList.addEventListener('click', (e) => {
-            const toggleBtn = e.target.closest('.history-notes-toggle');
+        // Toggle notes editor (Add Note button)
+        const toggleBtn = e.target.closest('.history-notes-toggle');
         if (toggleBtn) {
             e.stopPropagation();
             const date = toggleBtn.getAttribute('data-date');
             const notesContent = historyList.querySelector(`.history-notes-content[data-date="${date}"]`);
-            if (notesContent) {
-                const textarea = notesContent.querySelector('.history-notes-input');
-                const display = notesContent.querySelector('.history-notes-display');
-                const actions = notesContent.querySelector('.history-notes-actions');
-                const isEditing = textarea && textarea.style.display !== 'none';
-                
-                // Get current notes from the entry
-                const entry = historyData.find(h => h.date === date);
-                const currentNotes = entry?.notes || '';
-                
-                if (isEditing) {
-                    // Cancel editing - hide editor, show display if exists
-                    textarea.style.display = 'none';
-                    if (actions) actions.style.display = 'none';
-                    if (display) display.style.display = 'block';
-                    if (!display && !currentNotes) {
-                        notesContent.style.display = 'none';
-                    }
+            const editor = notesContent?.querySelector(`.history-notes-editor[data-date="${date}"]`);
+            
+            if (editor) {
+                const isVisible = editor.style.display !== 'none';
+                if (isVisible) {
+                    // Hide editor
+                    editor.style.display = 'none';
+                    const textarea = editor.querySelector('.history-notes-input');
+                    if (textarea) textarea.value = '';
                 } else {
-                    // Start editing - show editor, hide display
+                    // Show editor
                     notesContent.style.display = 'block';
+                    editor.style.display = 'block';
+                    const textarea = editor.querySelector('.history-notes-input');
                     if (textarea) {
-                        textarea.style.display = 'block';
-                        textarea.value = currentNotes;
                         textarea.focus();
                     }
-                    if (actions) actions.style.display = 'flex';
-                    if (display) display.style.display = 'none';
                 }
             }
         }
         
-        // Save notes
+        // Save note
         const saveBtn = e.target.closest('.history-notes-save');
         if (saveBtn) {
             e.stopPropagation();
             const date = saveBtn.getAttribute('data-date');
-            const notesContent = historyList.querySelector(`.history-notes-content[data-date="${date}"]`);
-            const textarea = notesContent?.querySelector('.history-notes-input');
+            const editor = historyList.querySelector(`.history-notes-editor[data-date="${date}"]`);
+            const textarea = editor?.querySelector('.history-notes-input');
+            
             if (textarea) {
-                const note = textarea.value.trim();
+                const noteText = textarea.value.trim();
+                if (!noteText) {
+                    alert('Please enter a note before saving.');
+                    return;
+                }
+                
                 const saveButton = saveBtn;
                 const originalText = saveButton.textContent;
                 saveButton.disabled = true;
                 saveButton.textContent = 'Saving...';
                 
-                // Save to server
-                saveHistoryNotes(date, note).then(() => {
-                    // Update local data
-                    const entry = historyData.find(h => h.date === date);
-                    if (entry) {
-                        entry.notes = note || null;
-                    }
+                addHistoryNote(date, noteText).then((data) => {
+                    // Reload history to get updated notes
+                    loadHistorySnapshots(historyPagination.page);
                     
-                    // Update display
-                    let display = notesContent.querySelector('.history-notes-display');
-                    const actions = notesContent.querySelector('.history-notes-actions');
-                    if (note) {
-                        if (!display) {
-                            display = document.createElement('div');
-                            display.className = 'history-notes-display';
-                            notesContent.appendChild(display);
-                        }
-                        display.textContent = note;
-                        display.style.display = 'block';
-                    } else if (display) {
-                        display.remove();
-                    }
-                    textarea.style.display = 'none';
-                    if (actions) actions.style.display = 'none';
-                    if (!note && !display) {
-                        notesContent.style.display = 'none';
-                    }
+                    // Clear textarea
+                    textarea.value = '';
+                    editor.style.display = 'none';
                     
                     saveButton.disabled = false;
                     saveButton.textContent = originalText;
                 }).catch(error => {
-                    console.error('Error saving notes:', error);
-                    alert('Failed to save notes. Please try again.');
+                    console.error('Error adding note:', error);
+                    alert('Failed to add note. Please try again.');
                     saveButton.disabled = false;
                     saveButton.textContent = originalText;
                 });
@@ -2869,27 +2894,34 @@ function setupHistoryNotesHandlers() {
         if (cancelBtn) {
             e.stopPropagation();
             const date = cancelBtn.getAttribute('data-date');
-            const notesContent = historyList.querySelector(`.history-notes-content[data-date="${date}"]`);
-            if (notesContent) {
-                const textarea = notesContent.querySelector('.history-notes-input');
-                const display = notesContent.querySelector('.history-notes-display');
-                const actions = notesContent.querySelector('.history-notes-actions');
-                
-                // Get current notes from the entry
-                const entry = historyData.find(h => h.date === date);
-                const currentNotes = entry?.notes || '';
-                
-                if (textarea) {
-                    textarea.value = currentNotes;
-                    textarea.style.display = 'none';
-                }
-                if (actions) actions.style.display = 'none';
-                if (display) {
-                    display.style.display = 'block';
-                } else if (!currentNotes) {
-                    notesContent.style.display = 'none';
-                }
+            const editor = historyList.querySelector(`.history-notes-editor[data-date="${date}"]`);
+            if (editor) {
+                const textarea = editor.querySelector('.history-notes-input');
+                if (textarea) textarea.value = '';
+                editor.style.display = 'none';
             }
+        }
+        
+        // Delete note
+        const deleteBtn = e.target.closest('.history-note-delete');
+        if (deleteBtn) {
+            e.stopPropagation();
+            const noteId = parseInt(deleteBtn.getAttribute('data-note-id'));
+            if (!confirm('Are you sure you want to delete this note?')) {
+                return;
+            }
+            
+            const deleteButton = deleteBtn;
+            deleteButton.disabled = true;
+            
+            deleteHistoryNote(noteId).then(() => {
+                // Reload history to get updated notes
+                loadHistorySnapshots(historyPagination.page);
+            }).catch(error => {
+                console.error('Error deleting note:', error);
+                alert('Failed to delete note. Please try again.');
+                deleteButton.disabled = false;
+            });
         }
     });
 }
