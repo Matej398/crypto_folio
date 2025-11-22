@@ -72,6 +72,70 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     exit;
 }
 
+// Handle PUT request to update a note
+if ($_SERVER['REQUEST_METHOD'] === 'PUT') {
+    $input = json_decode(file_get_contents('php://input'), true);
+    $noteId = isset($input['noteId']) ? (int)$input['noteId'] : null;
+    $noteText = $input['note'] ?? null;
+    
+    if (!$noteId) {
+        http_response_code(400);
+        echo json_encode(['success' => false, 'error' => 'Note ID is required']);
+        exit;
+    }
+    
+    if (!$noteText || trim($noteText) === '') {
+        http_response_code(400);
+        echo json_encode(['success' => false, 'error' => 'Note text is required']);
+        exit;
+    }
+    
+    try {
+        $pdo = getDBConnection();
+        
+        // Verify the note belongs to a history entry owned by this user
+        $verifyStmt = $pdo->prepare("
+            SELECT phn.id 
+            FROM portfolio_history_notes phn
+            INNER JOIN portfolio_history ph ON ph.id = phn.history_id
+            WHERE phn.id = :note_id AND ph.user_id = :user_id
+        ");
+        $verifyStmt->execute(['note_id' => $noteId, 'user_id' => $userId]);
+        
+        if (!$verifyStmt->fetchColumn()) {
+            http_response_code(404);
+            echo json_encode(['success' => false, 'error' => 'Note not found or access denied']);
+            exit;
+        }
+        
+        // Update the note
+        $updateStmt = $pdo->prepare("UPDATE portfolio_history_notes SET note_text = :note_text WHERE id = :note_id");
+        $updateStmt->execute([
+            'note_text' => trim($noteText),
+            'note_id' => $noteId
+        ]);
+        
+        // Fetch the updated note
+        $fetchStmt = $pdo->prepare("SELECT id, note_text, created_at FROM portfolio_history_notes WHERE id = :id");
+        $fetchStmt->execute(['id' => $noteId]);
+        $note = $fetchStmt->fetch(PDO::FETCH_ASSOC);
+        
+        echo json_encode([
+            'success' => true,
+            'message' => 'Note updated successfully',
+            'note' => [
+                'id' => (int)$note['id'],
+                'text' => $note['note_text'],
+                'createdAt' => $note['created_at']
+            ]
+        ]);
+    } catch (Throwable $e) {
+        http_response_code(500);
+        echo json_encode(['success' => false, 'error' => $e->getMessage()]);
+    }
+    exit;
+}
+
 // Handle DELETE request to remove a note
 if ($_SERVER['REQUEST_METHOD'] === 'DELETE') {
     $input = json_decode(file_get_contents('php://input'), true);

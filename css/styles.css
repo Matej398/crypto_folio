@@ -853,6 +853,14 @@ body.mobile-menu-open .mobile-menu-toggle .mobile-menu-close-icon {
     opacity: 0.7;
 }
 
+.history-note-actions {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.history-note-edit,
 .history-note-delete {
     flex-shrink: 0;
     background: none;
@@ -868,20 +876,102 @@ body.mobile-menu-open .mobile-menu-toggle .mobile-menu-close-icon {
     opacity: 0.6;
 }
 
+.history-note-edit:hover {
+    color: #34d399;
+    background: rgba(52, 211, 153, 0.1);
+    opacity: 1;
+}
+
 .history-note-delete:hover {
     color: #f87171;
     background: rgba(248, 113, 113, 0.1);
     opacity: 1;
 }
 
+.history-note-edit:disabled,
 .history-note-delete:disabled {
     opacity: 0.3;
     cursor: not-allowed;
 }
 
+.history-note-edit svg,
 .history-note-delete svg {
     width: 14px;
     height: 14px;
+}
+
+.history-note-edit-container {
+    margin-top: 8px;
+    padding-top: 8px;
+    border-top: 1px solid rgba(63, 63, 70, 0.2);
+}
+
+.history-note-edit-input {
+    width: 100%;
+    min-height: 60px;
+    background: var(--slate-800);
+    border: 1px solid var(--slate-700);
+    border-radius: 6px;
+    padding: 8px;
+    color: var(--text-primary);
+    font-family: 'Space Mono', monospace;
+    font-size: 0.75rem;
+    line-height: 1.5;
+    resize: vertical;
+    margin-bottom: 8px;
+}
+
+.history-note-edit-input:focus {
+    outline: none;
+    border-color: rgba(245, 245, 245, 0.3);
+    box-shadow: 0 0 0 1px rgba(245, 245, 245, 0.12);
+}
+
+.history-note-edit-actions {
+    display: flex;
+    gap: 6px;
+}
+
+.history-note-save,
+.history-note-cancel-edit {
+    padding: 4px 10px;
+    border-radius: 4px;
+    font-size: 0.65rem;
+    font-weight: 500;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    font-family: 'Space Mono', monospace;
+    border: 1px solid;
+}
+
+.history-note-save {
+    background: var(--slate-700);
+    border-color: var(--slate-600);
+    color: var(--text-primary);
+}
+
+.history-note-save:hover:not(:disabled) {
+    background: var(--slate-600);
+    border-color: var(--slate-500);
+}
+
+.history-note-cancel-edit {
+    background: transparent;
+    border-color: rgba(148, 163, 184, 0.3);
+    color: var(--slate-400);
+}
+
+.history-note-cancel-edit:hover {
+    background: rgba(148, 163, 184, 0.1);
+    border-color: rgba(148, 163, 184, 0.5);
+    color: var(--text-primary);
+}
+
+.history-note-save:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
 }
 
 .history-notes-editor {

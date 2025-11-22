@@ -2744,11 +2744,26 @@ function renderHistoryList() {
                                                 <div class="history-note-text">${escapeHtml(note.text)}</div>
                                                 <div class="history-note-date">${formattedDate}</div>
                                             </div>
-                                            <button class="history-note-delete" data-note-id="${note.id}" title="Delete note">
-                                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                                    <path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
-                                                </svg>
-                                            </button>
+                                            <div class="history-note-edit-container" style="display: none;">
+                                                <textarea class="history-note-edit-input" data-note-id="${note.id}">${escapeHtml(note.text)}</textarea>
+                                                <div class="history-note-edit-actions">
+                                                    <button class="history-note-save" data-note-id="${note.id}">Save</button>
+                                                    <button class="history-note-cancel-edit" data-note-id="${note.id}">Cancel</button>
+                                                </div>
+                                            </div>
+                                            <div class="history-note-actions">
+                                                <button class="history-note-edit" data-note-id="${note.id}" title="Edit note">
+                                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                                        <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                                                        <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                                                    </svg>
+                                                </button>
+                                                <button class="history-note-delete" data-note-id="${note.id}" title="Delete note">
+                                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                                        <path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                                                    </svg>
+                                                </button>
+                                            </div>
                                         </div>
                                     `;
                                 }).join('') : ''}
@@ -2799,6 +2814,38 @@ async function addHistoryNote(date, noteText) {
         return data;
     } catch (error) {
         console.error('Error adding history note:', error);
+        throw error;
+    }
+}
+
+async function updateHistoryNote(noteId, noteText) {
+    try {
+        const apiBase = getApiBase();
+        const response = await fetch(`${apiBase}/history.php`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            credentials: 'include',
+            body: JSON.stringify({
+                noteId: noteId,
+                note: noteText
+            })
+        });
+        
+        if (!response.ok) {
+            const errorData = await response.json().catch(() => ({}));
+            throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
+        }
+        
+        const data = await response.json();
+        if (!data.success) {
+            throw new Error(data.error || 'Failed to update note');
+        }
+        
+        return data;
+    } catch (error) {
+        console.error('Error updating history note:', error);
         throw error;
     }
 }
@@ -2917,11 +2964,26 @@ function setupHistoryNotesHandlers() {
                                     <div class="history-note-text">${escapeHtml(data.note.text)}</div>
                                     <div class="history-note-date">${formattedDate}</div>
                                 </div>
-                                <button class="history-note-delete" data-note-id="${data.note.id}" title="Delete note">
-                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                        <path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
-                                    </svg>
-                                </button>
+                                <div class="history-note-edit-container" style="display: none;">
+                                    <textarea class="history-note-edit-input" data-note-id="${data.note.id}">${escapeHtml(data.note.text)}</textarea>
+                                    <div class="history-note-edit-actions">
+                                        <button class="history-note-save" data-note-id="${data.note.id}">Save</button>
+                                        <button class="history-note-cancel-edit" data-note-id="${data.note.id}">Cancel</button>
+                                    </div>
+                                </div>
+                                <div class="history-note-actions">
+                                    <button class="history-note-edit" data-note-id="${data.note.id}" title="Edit note">
+                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                                            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                                        </svg>
+                                    </button>
+                                    <button class="history-note-delete" data-note-id="${data.note.id}" title="Delete note">
+                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                            <path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                                        </svg>
+                                    </button>
+                                </div>
                             </div>
                         `;
                         notesList.insertAdjacentHTML('afterbegin', newNoteHtml);
@@ -2954,6 +3016,115 @@ function setupHistoryNotesHandlers() {
                 if (textarea) textarea.value = '';
                 editor.style.display = 'none';
             }
+        }
+        
+        // Edit note
+        const editBtn = e.target.closest('.history-note-edit');
+        if (editBtn) {
+            e.stopPropagation();
+            e.preventDefault();
+            
+            const noteId = parseInt(editBtn.getAttribute('data-note-id'));
+            if (isNaN(noteId)) return;
+            
+            const noteItem = editBtn.closest('.history-note-item');
+            const noteContent = noteItem?.querySelector('.history-note-content');
+            const editContainer = noteItem?.querySelector('.history-note-edit-container');
+            const editInput = editContainer?.querySelector('.history-note-edit-input');
+            
+            if (noteContent && editContainer && editInput) {
+                // Hide content, show editor
+                noteContent.style.display = 'none';
+                editContainer.style.display = 'block';
+                editInput.focus();
+                editInput.select();
+            }
+        }
+        
+        // Save edited note
+        const saveEditBtn = e.target.closest('.history-note-save');
+        if (saveEditBtn) {
+            e.stopPropagation();
+            e.preventDefault();
+            
+            const noteId = parseInt(saveEditBtn.getAttribute('data-note-id'));
+            if (isNaN(noteId)) return;
+            
+            const noteItem = saveEditBtn.closest('.history-note-item');
+            const editContainer = noteItem?.querySelector('.history-note-edit-container');
+            const editInput = editContainer?.querySelector('.history-note-edit-input');
+            
+            if (!editInput) return;
+            
+            const noteText = editInput.value.trim();
+            if (!noteText) {
+                alert('Please enter a note before saving.');
+                return;
+            }
+            
+            const saveButton = saveEditBtn;
+            const originalText = saveButton.textContent;
+            saveButton.disabled = true;
+            saveButton.textContent = 'Saving...';
+            
+            updateHistoryNote(noteId, noteText).then((data) => {
+                // Update local data
+                historyData.forEach(entry => {
+                    if (Array.isArray(entry.notes)) {
+                        const noteIndex = entry.notes.findIndex(n => n.id === noteId);
+                        if (noteIndex !== -1) {
+                            entry.notes[noteIndex].text = data.note.text;
+                        }
+                    }
+                });
+                
+                // Update DOM
+                const noteContent = noteItem?.querySelector('.history-note-content');
+                const noteTextEl = noteContent?.querySelector('.history-note-text');
+                if (noteTextEl) {
+                    noteTextEl.textContent = data.note.text;
+                }
+                
+                // Hide editor, show content
+                if (editContainer) editContainer.style.display = 'none';
+                if (noteContent) noteContent.style.display = 'block';
+                
+                saveButton.disabled = false;
+                saveButton.textContent = originalText;
+            }).catch(error => {
+                console.error('Error updating note:', error);
+                alert('Failed to update note. Please try again.');
+                saveButton.disabled = false;
+                saveButton.textContent = originalText;
+            });
+        }
+        
+        // Cancel editing
+        const cancelEditBtn = e.target.closest('.history-note-cancel-edit');
+        if (cancelEditBtn) {
+            e.stopPropagation();
+            e.preventDefault();
+            
+            const noteId = parseInt(cancelEditBtn.getAttribute('data-note-id'));
+            if (isNaN(noteId)) return;
+            
+            const noteItem = cancelEditBtn.closest('.history-note-item');
+            const noteContent = noteItem?.querySelector('.history-note-content');
+            const editContainer = noteItem?.querySelector('.history-note-edit-container');
+            const editInput = editContainer?.querySelector('.history-note-edit-input');
+            
+            // Restore original text
+            const entry = historyData.find(e => Array.isArray(e.notes) && e.notes.some(n => n.id === noteId));
+            if (entry && editInput) {
+                const note = entry.notes.find(n => n.id === noteId);
+                if (note) {
+                    editInput.value = note.text;
+                }
+            }
+            
+            // Hide editor, show content
+            if (editContainer) editContainer.style.display = 'none';
+            if (noteContent) noteContent.style.display = 'block';
         }
         
         // Delete note
