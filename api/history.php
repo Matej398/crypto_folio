@@ -180,7 +180,7 @@ try {
             ];
         }
         
-        // Fetch notes
+        // Fetch notes from new table
         $notesStmt = $pdo->prepare("
             SELECT history_id, id, note_text, created_at
             FROM portfolio_history_notes
@@ -194,6 +194,35 @@ try {
                 'text' => $noteRow['note_text'],
                 'createdAt' => $noteRow['created_at'],
             ];
+        }
+    }
+
+    // Migrate old notes from notes column to new table
+    foreach ($historyRows as $row) {
+        $historyId = $row['id'];
+        $oldNotes = $row['notes'] ?? null;
+        
+        // Migrate old note if it exists and no new notes exist for this history entry
+        if ($oldNotes && trim($oldNotes) !== '' && empty($notesByHistory[$historyId])) {
+            try {
+                $migrateStmt = $pdo->prepare("INSERT INTO portfolio_history_notes (history_id, note_text, created_at) VALUES (:history_id, :note_text, :created_at)");
+                $migrateStmt->execute([
+                    'history_id' => $historyId,
+                    'note_text' => trim($oldNotes),
+                    'created_at' => $row['created_at'] ?? date('Y-m-d H:i:s')
+                ]);
+                $migratedNoteId = (int)$pdo->lastInsertId();
+                
+                // Add migrated note to the response
+                $notesByHistory[$historyId] = [[
+                    'id' => $migratedNoteId,
+                    'text' => trim($oldNotes),
+                    'createdAt' => $row['created_at'] ?? date('Y-m-d H:i:s')
+                ]];
+            } catch (Throwable $e) {
+                // If migration fails, just continue - don't break the request
+                error_log("Failed to migrate old note for history_id {$historyId}: " . $e->getMessage());
+            }
         }
     }
 
