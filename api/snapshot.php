@@ -50,6 +50,7 @@ try {
         }
     }
     $priceMap = fetchCoinPrices(array_unique($allCoinIds));
+    $fearGreedIndex = fetchFearGreedIndex();
 
     $historyResults = [];
     foreach ($portfolios as $portfolioRow) {
@@ -100,7 +101,8 @@ try {
             (int)$portfolioRow['user_id'],
             $snapshotDate,
             $totalValue,
-            $portfolioChange
+            $portfolioChange,
+            $fearGreedIndex
         );
 
         storeHistoryCoins($pdo, $historyId, $coinsSnapshot);
@@ -155,6 +157,28 @@ function fetchCoinPrices(array $coinIds): array {
     return $results;
 }
 
+function fetchFearGreedIndex(): ?int {
+    // Fetch from Alternative.me Crypto Fear & Greed Index API
+    $url = "https://api.alternative.me/fng/";
+    $response = httpRequest($url);
+    if (!$response) {
+        return null;
+    }
+    
+    $data = json_decode($response, true);
+    if (!is_array($data) || !isset($data['data']) || !is_array($data['data']) || empty($data['data'])) {
+        return null;
+    }
+    
+    // Get the most recent value (first item in the array)
+    $latest = $data['data'][0];
+    if (!isset($latest['value']) || !is_numeric($latest['value'])) {
+        return null;
+    }
+    
+    return (int)$latest['value'];
+}
+
 function httpRequest(string $url): ?string {
     $ch = curl_init($url);
     curl_setopt_array($ch, [
@@ -172,15 +196,16 @@ function httpRequest(string $url): ?string {
     return $statusCode === 200 ? $response : null;
 }
 
-function upsertHistory(PDO $pdo, int $userId, string $snapshotDate, float $totalValue, float $changePercent): int {
+function upsertHistory(PDO $pdo, int $userId, string $snapshotDate, float $totalValue, float $changePercent, ?int $fearGreedIndex = null): int {
     $stmt = $pdo->prepare("
-        INSERT INTO portfolio_history (user_id, snapshot_date, total_value, change_24h, daily_high, daily_low)
-        VALUES (?, ?, ?, ?, ?, ?)
+        INSERT INTO portfolio_history (user_id, snapshot_date, total_value, change_24h, daily_high, daily_low, fear_greed_index)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
         ON DUPLICATE KEY UPDATE
             total_value = VALUES(total_value),
             change_24h = VALUES(change_24h),
             daily_high = GREATEST(COALESCE(daily_high, VALUES(daily_high)), VALUES(daily_high)),
             daily_low = LEAST(COALESCE(daily_low, VALUES(daily_low)), VALUES(daily_low)),
+            fear_greed_index = COALESCE(VALUES(fear_greed_index), fear_greed_index),
             updated_at = CURRENT_TIMESTAMP
     ");
     $stmt->execute([
@@ -190,6 +215,7 @@ function upsertHistory(PDO $pdo, int $userId, string $snapshotDate, float $total
         round($changePercent, 4),
         round($totalValue, 2),
         round($totalValue, 2),
+        $fearGreedIndex,
     ]);
 
     $historyId = (int)$pdo->lastInsertId();

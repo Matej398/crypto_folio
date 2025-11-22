@@ -2619,6 +2619,26 @@ function escapeHtml(text) {
     return div.innerHTML;
 }
 
+function getFearGreedLabel(index) {
+    if (index === null || index === undefined) return null;
+    if (index >= 0 && index <= 24) return 'Extreme Fear';
+    if (index >= 25 && index <= 44) return 'Fear';
+    if (index >= 45 && index <= 55) return 'Neutral';
+    if (index >= 56 && index <= 75) return 'Greed';
+    if (index >= 76 && index <= 100) return 'Extreme Greed';
+    return null;
+}
+
+function getFearGreedColorClass(index) {
+    if (index === null || index === undefined) return '';
+    if (index >= 0 && index <= 24) return 'extreme-fear';
+    if (index >= 25 && index <= 44) return 'fear';
+    if (index >= 45 && index <= 55) return 'neutral';
+    if (index >= 56 && index <= 75) return 'greed';
+    if (index >= 76 && index <= 100) return 'extreme-greed';
+    return '';
+}
+
 function renderHistoryList() {
     if (!historyList) return;
     const activeHistory = (historyData && historyData.length > 0) ? historyData : mockHistoryData;
@@ -2673,6 +2693,11 @@ function renderHistoryList() {
                             <p class="history-card-date">${formattedDate}</p>
                             <span class="history-stat-pill">Low <span class="history-stat-value">${formatPortfolioRecord(entry.dailyLow)}</span></span>
                             <span class="history-stat-pill">High <span class="history-stat-value">${formatPortfolioRecord(entry.dailyHigh)}</span></span>
+                            ${entry.fearGreedIndex !== null && entry.fearGreedIndex !== undefined ? `
+                                <span class="history-stat-pill fear-greed-index ${getFearGreedColorClass(entry.fearGreedIndex)}" title="Fear & Greed Index: ${getFearGreedLabel(entry.fearGreedIndex)}">
+                                    F&G <span class="history-stat-value">${entry.fearGreedIndex}</span>
+                                </span>
+                            ` : ''}
                         </div>
                         <div class="history-card-total">
                             <p class="history-card-value">${formatPortfolioRecord(entry.totalValue)}</p>

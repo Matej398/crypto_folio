@@ -80,7 +80,7 @@ try {
     }
 
     $stmt = $pdo->prepare("
-        SELECT id, snapshot_date, total_value, change_24h, daily_high, daily_low, notes, created_at
+        SELECT id, snapshot_date, total_value, change_24h, daily_high, daily_low, notes, fear_greed_index, created_at
         FROM portfolio_history
         WHERE user_id = :user_id
         ORDER BY snapshot_date DESC
@@ -127,6 +127,7 @@ try {
             'dailyHigh' => $row['daily_high'] !== null ? (float)$row['daily_high'] : null,
             'dailyLow' => $row['daily_low'] !== null ? (float)$row['daily_low'] : null,
             'notes' => $row['notes'] ?? null,
+            'fearGreedIndex' => $row['fear_greed_index'] !== null ? (int)$row['fear_greed_index'] : null,
             'coins' => $coinsByHistory[$historyId] ?? [],
         ];
     }, $historyRows);

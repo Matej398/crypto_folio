@@ -565,6 +565,30 @@ body.mobile-menu-open .mobile-menu-toggle .mobile-menu-close-icon {
     color: var(--text-primary);
 }
 
+.history-stat-pill.fear-greed-index .history-stat-value {
+    font-weight: 500;
+}
+
+.history-stat-pill.fear-greed-index.extreme-fear .history-stat-value {
+    color: #f87171;
+}
+
+.history-stat-pill.fear-greed-index.fear .history-stat-value {
+    color: #fb923c;
+}
+
+.history-stat-pill.fear-greed-index.neutral .history-stat-value {
+    color: #94a3b8;
+}
+
+.history-stat-pill.fear-greed-index.greed .history-stat-value {
+    color: #34d399;
+}
+
+.history-stat-pill.fear-greed-index.extreme-greed .history-stat-value {
+    color: #10b981;
+}
+
 .history-badges {
     display: flex;
     gap: 8px;
