@@ -1,5 +1,5 @@
 <?php
-require_once 'config.php';
+require_once 'config_loader.php';
 
 $method = $_SERVER['REQUEST_METHOD'];
 $action = $_GET['action'] ?? '';

@@ -1,5 +1,5 @@
 <?php
-require_once __DIR__ . '/config.php';
+require_once __DIR__ . '/config_loader.php';
 
 session_start();
 if (!isset($_SESSION['user_id'])) {
@@ -31,14 +31,65 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     try {
         $pdo = getDBConnection();
         
+        // Check if portfolio_history_notes table exists
+        $tableCheck = $pdo->query("SHOW TABLES LIKE 'portfolio_history_notes'");
+        if ($tableCheck->rowCount() === 0) {
+            http_response_code(500);
+            echo json_encode([
+                'success' => false, 
+                'error' => 'Database table portfolio_history_notes does not exist. Please run the migration script.'
+            ]);
+            exit;
+        }
+        
         // Check if history entry exists for this date
         $checkStmt = $pdo->prepare("SELECT id FROM portfolio_history WHERE user_id = :user_id AND snapshot_date = :date");
         $checkStmt->execute(['user_id' => $userId, 'date' => $date]);
         $historyId = $checkStmt->fetchColumn();
         
+        // If history entry doesn't exist, create a minimal one
         if (!$historyId) {
-            http_response_code(404);
-            echo json_encode(['success' => false, 'error' => 'History entry not found for this date']);
+            // Get user's current portfolio value to create a basic history entry
+            $portfolioStmt = $pdo->prepare("SELECT portfolio_data FROM portfolios WHERE user_id = :user_id");
+            $portfolioStmt->execute(['user_id' => $userId]);
+            $portfolioData = $portfolioStmt->fetchColumn();
+            
+            $totalValue = 0;
+            if ($portfolioData) {
+                $portfolio = json_decode($portfolioData, true);
+                if (is_array($portfolio)) {
+                    // Calculate a basic total value (this is a fallback, ideally should use snapshot)
+                    foreach ($portfolio as $coin) {
+                        $quantity = (float)($coin['quantity'] ?? 0);
+                        $price = (float)($coin['price'] ?? 0);
+                        $totalValue += $quantity * $price;
+                    }
+                }
+            }
+            
+            // Create a minimal history entry
+            $createStmt = $pdo->prepare("
+                INSERT INTO portfolio_history (user_id, snapshot_date, total_value, change_24h, daily_high, daily_low)
+                VALUES (:user_id, :date, :total_value, 0, :total_value, :total_value)
+            ");
+            $createStmt->execute([
+                'user_id' => $userId,
+                'date' => $date,
+                'total_value' => max(0, round($totalValue, 2))
+            ]);
+            $historyId = (int)$pdo->lastInsertId();
+            
+            if (!$historyId) {
+                // If insert failed, try to get the ID (in case of duplicate key)
+                $lookupStmt = $pdo->prepare("SELECT id FROM portfolio_history WHERE user_id = :user_id AND snapshot_date = :date");
+                $lookupStmt->execute(['user_id' => $userId, 'date' => $date]);
+                $historyId = (int)$lookupStmt->fetchColumn();
+            }
+        }
+        
+        if (!$historyId) {
+            http_response_code(500);
+            echo json_encode(['success' => false, 'error' => 'Failed to create or find history entry for this date']);
             exit;
         }
         
@@ -51,10 +102,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         
         $noteId = (int)$pdo->lastInsertId();
         
+        if ($noteId === 0) {
+            http_response_code(500);
+            echo json_encode(['success' => false, 'error' => 'Failed to create note. Please check database connection.']);
+            exit;
+        }
+        
         // Fetch the created note with timestamp
         $fetchStmt = $pdo->prepare("SELECT id, note_text, created_at FROM portfolio_history_notes WHERE id = :id");
         $fetchStmt->execute(['id' => $noteId]);
         $note = $fetchStmt->fetch(PDO::FETCH_ASSOC);
+        
+        if (!$note) {
+            http_response_code(500);
+            echo json_encode(['success' => false, 'error' => 'Note was created but could not be retrieved.']);
+            exit;
+        }
         
         echo json_encode([
             'success' => true,
@@ -65,6 +128,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 'createdAt' => $note['created_at']
             ]
         ]);
+    } catch (PDOException $e) {
+        http_response_code(500);
+        $errorMsg = $e->getMessage();
+        // Check for common database errors
+        if (strpos($errorMsg, "doesn't exist") !== false || strpos($errorMsg, "Unknown table") !== false) {
+            $errorMsg = 'Database table portfolio_history_notes does not exist. Please run the migration script.';
+        }
+        echo json_encode(['success' => false, 'error' => $errorMsg]);
     } catch (Throwable $e) {
         http_response_code(500);
         echo json_encode(['success' => false, 'error' => $e->getMessage()]);

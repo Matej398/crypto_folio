@@ -1,19 +1,17 @@
 <?php
 // Database configuration
-// Copy this file to config.php and update with your actual credentials
+// This file is auto-copied to config.php on first run
+// Modify config.php with your actual credentials (it won't be overwritten)
 
-// For LOCAL development, use:
-// define('DB_USER', 'root');
-// define('DB_PASS', '');
-
-// For SERVER production (Hostinger), use:
-// define('DB_USER', 'crypto_portfolio');
-// define('DB_PASS', 'PxBeoY5Ei#xB');
-
+// For LOCAL development (default):
 define('DB_HOST', 'localhost');
 define('DB_NAME', 'crypto_portfolio');
-define('DB_USER', 'crypto_portfolio');  // Change to 'root' for local if needed
-define('DB_PASS', 'PxBeoY5Ei#xB');      // Change to '' for local if needed
+define('DB_USER', 'root');  // Default for local - change in config.php if needed
+define('DB_PASS', '');      // Default for local - change in config.php if needed
+
+// For SERVER production (Hostinger), uncomment these in config.php:
+// define('DB_USER', 'crypto_portfolio');
+// define('DB_PASS', 'PxBeoY5Ei#xB');
 define('DB_CHARSET', 'utf8mb4');
 define('SNAPSHOT_TIMEZONE', 'Europe/Ljubljana'); // Used for daily cron snapshots
 define('CRON_SECRET', 'replace-this-token'); // Change before enabling cron access
