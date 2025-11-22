@@ -2641,6 +2641,20 @@ function getFearGreedColorClass(index) {
 
 function renderHistoryList() {
     if (!historyList) return;
+    
+    // Preserve expanded state before re-rendering
+    const expandedDates = new Set();
+    historyList.querySelectorAll('.history-card.expanded').forEach(card => {
+        // Try to find the date from the notes section or card data
+        const notesContent = card.querySelector('.history-notes-content');
+        if (notesContent) {
+            const date = notesContent.getAttribute('data-date');
+            if (date) {
+                expandedDates.add(date);
+            }
+        }
+    });
+    
     const activeHistory = (historyData && historyData.length > 0) ? historyData : mockHistoryData;
     if (!activeHistory || activeHistory.length === 0) {
         historyList.innerHTML = '<p class="history-subtitle">History data coming soon.</p>';
@@ -2685,8 +2699,9 @@ function renderHistoryList() {
                 </div>
             `;
         }).join('');
+        const isExpanded = expandedDates.has(entry.date);
         return `
-            <article class="history-card" data-index="${index}">
+            <article class="history-card ${isExpanded ? 'expanded' : ''}" data-index="${index}">
                 <div class="history-card-header">
                     <div class="history-card-meta">
                         <div class="history-card-date-group">
@@ -2819,8 +2834,14 @@ async function deleteHistoryNote(noteId) {
     }
 }
 
+let historyNotesHandlerAttached = false;
+
 function setupHistoryNotesHandlers() {
     if (!historyList) return;
+    
+    // Only attach handler once using event delegation
+    if (historyNotesHandlerAttached) return;
+    historyNotesHandlerAttached = true;
     
     historyList.addEventListener('click', (e) => {
         // Toggle notes editor (Add Note button)
@@ -2871,8 +2892,41 @@ function setupHistoryNotesHandlers() {
                 saveButton.textContent = 'Saving...';
                 
                 addHistoryNote(date, noteText).then((data) => {
-                    // Reload history to get updated notes
-                    loadHistorySnapshots(historyPagination.page);
+                    // Update the note in the local data immediately
+                    const entry = historyData.find(h => h.date === date);
+                    if (entry) {
+                        if (!Array.isArray(entry.notes)) {
+                            entry.notes = [];
+                        }
+                        entry.notes.unshift({
+                            id: data.note.id,
+                            text: data.note.text,
+                            createdAt: data.note.createdAt
+                        });
+                    }
+                    
+                    // Re-render just this card's notes section without reloading everything
+                    const notesContent = historyList.querySelector(`.history-notes-content[data-date="${date}"]`);
+                    const notesList = notesContent?.querySelector('.history-notes-list');
+                    if (notesList && entry) {
+                        const noteDate = new Date(data.note.createdAt);
+                        const formattedDate = formatEULocalDate(data.note.createdAt) + ' ' + noteDate.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+                        const newNoteHtml = `
+                            <div class="history-note-item" data-note-id="${data.note.id}">
+                                <div class="history-note-content">
+                                    <div class="history-note-text">${escapeHtml(data.note.text)}</div>
+                                    <div class="history-note-date">${formattedDate}</div>
+                                </div>
+                                <button class="history-note-delete" data-note-id="${data.note.id}" title="Delete note">
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                        <path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                                    </svg>
+                                </button>
+                            </div>
+                        `;
+                        notesList.insertAdjacentHTML('afterbegin', newNoteHtml);
+                        notesContent.style.display = 'block';
+                    }
                     
                     // Clear textarea
                     textarea.value = '';
@@ -2906,17 +2960,41 @@ function setupHistoryNotesHandlers() {
         const deleteBtn = e.target.closest('.history-note-delete');
         if (deleteBtn) {
             e.stopPropagation();
+            e.preventDefault();
+            
             const noteId = parseInt(deleteBtn.getAttribute('data-note-id'));
+            if (isNaN(noteId)) return;
+            
             if (!confirm('Are you sure you want to delete this note?')) {
                 return;
             }
             
             const deleteButton = deleteBtn;
+            const noteItem = deleteBtn.closest('.history-note-item');
             deleteButton.disabled = true;
             
             deleteHistoryNote(noteId).then(() => {
-                // Reload history to get updated notes
-                loadHistorySnapshots(historyPagination.page);
+                // Remove note from local data
+                historyData.forEach(entry => {
+                    if (Array.isArray(entry.notes)) {
+                        entry.notes = entry.notes.filter(n => n.id !== noteId);
+                    }
+                });
+                
+                // Remove the note item from DOM
+                if (noteItem) {
+                    noteItem.remove();
+                    
+                    // Hide notes section if no notes left
+                    const notesList = noteItem.closest('.history-notes-list');
+                    const notesContent = noteItem.closest('.history-notes-content');
+                    if (notesList && notesList.children.length === 0 && notesContent) {
+                        const editor = notesContent.querySelector('.history-notes-editor');
+                        if (!editor || editor.style.display === 'none') {
+                            notesContent.style.display = 'none';
+                        }
+                    }
+                }
             }).catch(error => {
                 console.error('Error deleting note:', error);
                 alert('Failed to delete note. Please try again.');
