@@ -162,21 +162,26 @@ function fetchFearGreedIndex(): ?int {
     $url = "https://api.alternative.me/fng/";
     $response = httpRequest($url);
     if (!$response) {
+        error_log("Fear & Greed Index API: No response received");
         return null;
     }
     
     $data = json_decode($response, true);
     if (!is_array($data) || !isset($data['data']) || !is_array($data['data']) || empty($data['data'])) {
+        error_log("Fear & Greed Index API: Invalid response structure - " . substr($response, 0, 200));
         return null;
     }
     
     // Get the most recent value (first item in the array)
     $latest = $data['data'][0];
     if (!isset($latest['value']) || !is_numeric($latest['value'])) {
+        error_log("Fear & Greed Index API: Missing or invalid value in response");
         return null;
     }
     
-    return (int)$latest['value'];
+    $value = (int)$latest['value'];
+    error_log("Fear & Greed Index API: Successfully fetched value: " . $value);
+    return $value;
 }
 
 function httpRequest(string $url): ?string {
@@ -205,7 +210,7 @@ function upsertHistory(PDO $pdo, int $userId, string $snapshotDate, float $total
             change_24h = VALUES(change_24h),
             daily_high = GREATEST(COALESCE(daily_high, VALUES(daily_high)), VALUES(daily_high)),
             daily_low = LEAST(COALESCE(daily_low, VALUES(daily_low)), VALUES(daily_low)),
-            fear_greed_index = COALESCE(VALUES(fear_greed_index), fear_greed_index),
+            fear_greed_index = IF(VALUES(fear_greed_index) IS NOT NULL, VALUES(fear_greed_index), fear_greed_index),
             updated_at = CURRENT_TIMESTAMP
     ");
     $stmt->execute([
@@ -217,6 +222,14 @@ function upsertHistory(PDO $pdo, int $userId, string $snapshotDate, float $total
         round($totalValue, 2),
         $fearGreedIndex,
     ]);
+
+    $historyId = (int)$pdo->lastInsertId();
+    if ($historyId === 0) {
+        $lookup = $pdo->prepare("SELECT id FROM portfolio_history WHERE user_id = ? AND snapshot_date = ?");
+        $lookup->execute([$userId, $snapshotDate]);
+        $historyId = (int)$lookup->fetchColumn();
+    }
+    return $historyId;
 
     $historyId = (int)$pdo->lastInsertId();
     if ($historyId === 0) {
