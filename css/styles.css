@@ -511,15 +511,12 @@ body.mobile-menu-open .mobile-menu-toggle .mobile-menu-close-icon {
 }
 
 .history-notes-indicator {
-    position: relative;
     display: inline-flex;
     align-items: center;
-    justify-content: center;
+    gap: 6px;
     color: var(--slate-400);
     flex-shrink: 0;
     cursor: default;
-    width: 18px;
-    height: 18px;
 }
 
 .history-notes-indicator.no-notes {
@@ -534,26 +531,14 @@ body.mobile-menu-open .mobile-menu-toggle .mobile-menu-close-icon {
 .history-notes-indicator svg {
     width: 18px;
     height: 18px;
+    flex-shrink: 0;
 }
 
-.history-notes-badge {
-    position: absolute;
-    top: -8px;
-    right: -10px;
-    background: #1a73e8;
-    color: white;
-    border-radius: 10px;
-    min-width: 18px;
-    height: 18px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 0.7rem;
+.history-notes-count {
+    font-size: 0.75rem;
     font-weight: 500;
-    padding: 0 6px;
-    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+    color: var(--slate-400);
     line-height: 1;
-    border: none;
 }
 
 .history-card-date-group {
