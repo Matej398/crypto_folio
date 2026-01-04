@@ -1630,18 +1630,16 @@ async function updateFearGreedIndex() {
     const classificationTextEl = document.getElementById('fearGreedClassification');
     const gaugeNeedle = document.querySelector('.gauge-needle');
     
-    // Primary data source - feargreedmeter.com (more accurate than alternative.me)
-    // Fallback to alternative.me if primary source fails
-    // Note: feargreedmeter.com endpoint includes a build ID that may change
-    // If it stops working, check the Network tab on their site for the latest endpoint
+    // Use our PHP proxy endpoint which tries multiple sources
+    // The proxy scrapes feargreedmeter.com (more accurate) and falls back to alternative.me
     const apiEndpoints = [
         {
-            url: 'https://feargreedmeter.com/_next/data/UTI167DfsxwvK8Klmh1X2/fear-and-greed-index.json',
-            parser: 'feargreedmeter' // Custom parser for this format
+            url: 'api/fear_greed.php',
+            parser: 'proxy' // Our proxy endpoint format
         },
         {
             url: 'https://api.alternative.me/fng/?limit=1',
-            parser: 'alternative' // Standard parser
+            parser: 'alternative' // Fallback to direct API
         },
         {
             url: 'https://api.alternative.me/fng/',
@@ -1679,19 +1677,10 @@ async function updateFearGreedIndex() {
             // Handle different response formats based on parser type
             let indexData = null;
             
-            if (endpoint.parser === 'feargreedmeter') {
-                // feargreedmeter.com format: pageProps.data.fgiData.fgi (array of historical data)
-                // Get the latest entry (last in array)
-                const fgiArray = data?.pageProps?.data?.fgiData?.fgi;
-                if (Array.isArray(fgiArray) && fgiArray.length > 0) {
-                    const latest = fgiArray[fgiArray.length - 1];
-                    if (latest && typeof latest.now === 'number') {
-                        indexData = {
-                            value: latest.now.toString(),
-                            value_classification: getFearGreedLabel(latest.now) || '',
-                            timestamp: latest.date ? new Date(latest.date).getTime() / 1000 : null
-                        };
-                    }
+            if (endpoint.parser === 'proxy') {
+                // Our PHP proxy endpoint format: { success: true, data: [{ value, value_classification, timestamp }] }
+                if (data && data.success && data.data && Array.isArray(data.data) && data.data.length > 0) {
+                    indexData = data.data[0];
                 }
             } else if (endpoint.parser === 'alternative') {
                 // alternative.me format
