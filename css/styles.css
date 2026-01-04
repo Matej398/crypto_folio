@@ -538,22 +538,22 @@ body.mobile-menu-open .mobile-menu-toggle .mobile-menu-close-icon {
 
 .history-notes-badge {
     position: absolute;
-    top: -6px;
-    right: -8px;
-    background: white;
-    color: black;
+    top: -8px;
+    right: -10px;
+    background: #1a73e8;
+    color: white;
     border-radius: 10px;
     min-width: 18px;
     height: 18px;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 0.65rem;
-    font-weight: 600;
-    padding: 0 5px;
-    border: 2px solid rgba(12, 12, 16, 0.95);
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+    font-size: 0.7rem;
+    font-weight: 500;
+    padding: 0 6px;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
     line-height: 1;
+    border: none;
 }
 
 .history-card-date-group {
