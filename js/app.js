@@ -1620,67 +1620,137 @@ async function updateFooterCoinPrices() {
 
 // Fetch and update Fear & Greed Index
 async function updateFearGreedIndex() {
-    try {
-        const response = await fetch('https://api.alternative.me/fng/');
-        
-        if (!response.ok) {
-            console.error('Fear & Greed API response not ok:', response.status);
-            return;
-        }
-        
-        const data = await response.json();
-        console.log('Fear & Greed API data:', data);
-        
-        if (data && data.data && Array.isArray(data.data) && data.data.length > 0) {
-            const indexData = data.data[0];
-            const value = parseInt(indexData.value, 10);
-            const classification = indexData.value_classification || '';
+    const valueEl = document.getElementById('fearGreedValue');
+    const classificationEl = document.getElementById('fearGreedIndex');
+    const classificationTextEl = document.getElementById('fearGreedClassification');
+    const gaugeNeedle = document.querySelector('.gauge-needle');
+    
+    // Try multiple API endpoints as fallback
+    const apiEndpoints = [
+        'https://api.alternative.me/fng/?limit=1',
+        'https://api.alternative.me/fng/',
+        'https://fear-and-greed-index.p.rapidapi.com/v1/fgi' // Alternative if available
+    ];
+    
+    let success = false;
+    let lastError = null;
+    
+    for (const endpoint of apiEndpoints) {
+        try {
+            // Create timeout controller for better browser compatibility
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
             
-            const valueEl = document.getElementById('fearGreedValue');
-            const classificationEl = document.getElementById('fearGreedIndex');
-            const classificationTextEl = document.getElementById('fearGreedClassification');
-            const gaugeNeedle = document.querySelector('.gauge-needle');
+            const response = await fetch(endpoint, {
+                method: 'GET',
+                headers: {
+                    'Accept': 'application/json',
+                },
+                signal: controller.signal
+            });
             
-            if (valueEl && !isNaN(value)) {
-                valueEl.textContent = value;
+            clearTimeout(timeoutId);
+            
+            if (!response.ok) {
+                console.warn(`Fear & Greed API endpoint failed: ${endpoint} (${response.status})`);
+                continue;
             }
             
-            if (classificationTextEl && classification) {
-                classificationTextEl.textContent = classification;
+            const data = await response.json();
+            console.log('Fear & Greed API data:', data);
+            
+            // Handle different response formats
+            let indexData = null;
+            if (data && data.data && Array.isArray(data.data) && data.data.length > 0) {
+                indexData = data.data[0];
+            } else if (data && data.value !== undefined) {
+                // Direct value format
+                indexData = data;
+            } else if (data && data.fgi && data.fgi.now) {
+                // Alternative format
+                indexData = {
+                    value: data.fgi.now.value,
+                    value_classification: data.fgi.now.valueText
+                };
             }
             
-            // Update gauge needle rotation (0-100 maps to -90 to +90 degrees)
-            // 0 (Extreme Fear) = -90° (left), 50 (Neutral) = 0° (up), 100 (Extreme Greed) = +90° (right)
-            if (gaugeNeedle && !isNaN(value)) {
-                const rotation = (value / 100) * 180 - 90; // 0-100 -> -90 to +90 degrees
-                gaugeNeedle.style.transform = `rotate(${rotation}deg)`;
-                gaugeNeedle.style.transformOrigin = '12px 12px';
-            }
-            
-            if (classificationEl) {
-                // Remove existing classification classes
-                classificationEl.classList.remove(
-                    'extreme-fear', 'fear', 'neutral', 'greed', 'extreme-greed'
-                );
+            if (indexData && indexData.value !== undefined) {
+                const value = parseInt(indexData.value, 10);
+                const classification = indexData.value_classification || indexData.valueText || '';
                 
-                // Add appropriate class based on value
-                if (value >= 0 && value <= 24) {
-                    classificationEl.classList.add('extreme-fear');
-                } else if (value >= 25 && value <= 44) {
-                    classificationEl.classList.add('fear');
-                } else if (value >= 45 && value <= 55) {
-                    classificationEl.classList.add('neutral');
-                } else if (value >= 56 && value <= 75) {
-                    classificationEl.classList.add('greed');
-                } else if (value >= 76 && value <= 100) {
-                    classificationEl.classList.add('extreme-greed');
+                // Check if data is stale (older than 24 hours)
+                const timestamp = indexData.timestamp ? parseInt(indexData.timestamp, 10) : null;
+                if (timestamp) {
+                    const dataAge = Date.now() / 1000 - timestamp;
+                    if (dataAge > 86400) { // 24 hours
+                        console.warn('Fear & Greed Index data is stale (older than 24 hours)');
+                    }
                 }
+                
+                if (!isNaN(value) && value >= 0 && value <= 100) {
+                    // Update UI elements
+                    if (valueEl) {
+                        valueEl.textContent = value;
+                    }
+                    
+                    if (classificationTextEl && classification) {
+                        classificationTextEl.textContent = classification;
+                    }
+                    
+                    // Update gauge needle rotation (0-100 maps to -90 to +90 degrees)
+                    // 0 (Extreme Fear) = -90° (left), 50 (Neutral) = 0° (up), 100 (Extreme Greed) = +90° (right)
+                    if (gaugeNeedle) {
+                        const rotation = (value / 100) * 180 - 90; // 0-100 -> -90 to +90 degrees
+                        gaugeNeedle.style.transform = `rotate(${rotation}deg)`;
+                        gaugeNeedle.style.transformOrigin = '12px 12px';
+                    }
+                    
+                    if (classificationEl) {
+                        // Remove existing classification classes
+                        classificationEl.classList.remove(
+                            'extreme-fear', 'fear', 'neutral', 'greed', 'extreme-greed'
+                        );
+                        
+                        // Add appropriate class based on value
+                        if (value >= 0 && value <= 24) {
+                            classificationEl.classList.add('extreme-fear');
+                        } else if (value >= 25 && value <= 44) {
+                            classificationEl.classList.add('fear');
+                        } else if (value >= 45 && value <= 55) {
+                            classificationEl.classList.add('neutral');
+                        } else if (value >= 56 && value <= 75) {
+                            classificationEl.classList.add('greed');
+                        } else if (value >= 76 && value <= 100) {
+                            classificationEl.classList.add('extreme-greed');
+                        }
+                    }
+                    
+                    success = true;
+                    break; // Success, exit loop
+                }
+            } else {
+                console.warn('Invalid Fear & Greed API data structure from:', endpoint);
             }
-        } else {
-            console.error('Invalid Fear & Greed API data structure:', data);
+        } catch (error) {
+            if (error.name === 'AbortError') {
+                console.warn(`Fear & Greed API timeout for: ${endpoint}`);
+            } else {
+                console.warn(`Fear & Greed API error for ${endpoint}:`, error);
+            }
+            lastError = error;
+            continue; // Try next endpoint
         }
-    } catch (error) {
-        console.error('Error fetching Fear & Greed Index:', error);
+    }
+    
+    if (!success) {
+        console.error('All Fear & Greed Index API endpoints failed. Last error:', lastError);
+        // Show error state in UI
+        if (valueEl) {
+            valueEl.textContent = '—';
+        }
+        if (classificationTextEl) {
+            classificationTextEl.textContent = 'Unavailable';
+        }
     }
 }
 

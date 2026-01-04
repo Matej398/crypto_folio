@@ -158,30 +158,65 @@ function fetchCoinPrices(array $coinIds): array {
 }
 
 function fetchFearGreedIndex(): ?int {
-    // Fetch from Alternative.me Crypto Fear & Greed Index API
-    $url = "https://api.alternative.me/fng/";
-    $response = httpRequest($url);
-    if (!$response) {
-        error_log("Fear & Greed Index API: No response received");
-        return null;
+    // Try multiple API endpoints as fallback
+    $endpoints = [
+        "https://api.alternative.me/fng/?limit=1",
+        "https://api.alternative.me/fng/",
+    ];
+    
+    foreach ($endpoints as $url) {
+        $response = httpRequest($url);
+        if (!$response) {
+            error_log("Fear & Greed Index API: No response from {$url}");
+            continue; // Try next endpoint
+        }
+        
+        $data = json_decode($response, true);
+        if (!$data) {
+            error_log("Fear & Greed Index API: Invalid JSON from {$url}");
+            continue;
+        }
+        
+        // Handle different response formats
+        $value = null;
+        
+        // Standard format: { "data": [{ "value": 45, ... }] }
+        if (is_array($data) && isset($data['data']) && is_array($data['data']) && !empty($data['data'])) {
+            $latest = $data['data'][0];
+            if (isset($latest['value']) && is_numeric($latest['value'])) {
+                $value = (int)$latest['value'];
+            }
+        }
+        // Direct value format: { "value": 45, ... }
+        elseif (isset($data['value']) && is_numeric($data['value'])) {
+            $value = (int)$data['value'];
+        }
+        
+        if ($value !== null && $value >= 0 && $value <= 100) {
+            // Check if data is stale (older than 24 hours)
+            $timestamp = null;
+            if (isset($data['data'][0]['timestamp'])) {
+                $timestamp = (int)$data['data'][0]['timestamp'];
+            } elseif (isset($data['timestamp'])) {
+                $timestamp = (int)$data['timestamp'];
+            }
+            
+            if ($timestamp) {
+                $dataAge = time() - $timestamp;
+                if ($dataAge > 86400) { // 24 hours
+                    error_log("Fear & Greed Index API: Data is stale (age: {$dataAge} seconds)");
+                }
+            }
+            
+            error_log("Fear & Greed Index API: Successfully fetched value: {$value} from {$url}");
+            return $value;
+        }
+        
+        error_log("Fear & Greed Index API: Invalid response structure from {$url} - " . substr($response, 0, 200));
     }
     
-    $data = json_decode($response, true);
-    if (!is_array($data) || !isset($data['data']) || !is_array($data['data']) || empty($data['data'])) {
-        error_log("Fear & Greed Index API: Invalid response structure - " . substr($response, 0, 200));
-        return null;
-    }
-    
-    // Get the most recent value (first item in the array)
-    $latest = $data['data'][0];
-    if (!isset($latest['value']) || !is_numeric($latest['value'])) {
-        error_log("Fear & Greed Index API: Missing or invalid value in response");
-        return null;
-    }
-    
-    $value = (int)$latest['value'];
-    error_log("Fear & Greed Index API: Successfully fetched value: " . $value);
-    return $value;
+    error_log("Fear & Greed Index API: All endpoints failed");
+    return null;
 }
 
 function httpRequest(string $url): ?string {
