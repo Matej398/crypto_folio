@@ -518,6 +518,17 @@ body.mobile-menu-open .mobile-menu-toggle .mobile-menu-close-icon {
     color: var(--slate-400);
     flex-shrink: 0;
     cursor: default;
+    width: 18px;
+    height: 18px;
+}
+
+.history-notes-indicator.no-notes {
+    /* Empty space to maintain alignment */
+    visibility: hidden;
+}
+
+.history-notes-indicator.has-notes {
+    visibility: visible;
 }
 
 .history-notes-indicator svg {
@@ -529,8 +540,8 @@ body.mobile-menu-open .mobile-menu-toggle .mobile-menu-close-icon {
     position: absolute;
     top: -6px;
     right: -8px;
-    background: #3b82f6;
-    color: white;
+    background: white;
+    color: black;
     border-radius: 10px;
     min-width: 18px;
     height: 18px;
