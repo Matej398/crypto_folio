@@ -1619,17 +1619,29 @@ async function updateFooterCoinPrices() {
 }
 
 // Fetch and update Fear & Greed Index
+// NOTE: If alternative.me data seems inaccurate, you can switch to a different source
+// by modifying the apiEndpoints array below. Some alternatives:
+// - CFGI.io (requires API key)
+// - Blockchain.com (if they provide public API)
+// - Custom aggregation of multiple sources
 async function updateFearGreedIndex() {
     const valueEl = document.getElementById('fearGreedValue');
     const classificationEl = document.getElementById('fearGreedIndex');
     const classificationTextEl = document.getElementById('fearGreedClassification');
     const gaugeNeedle = document.querySelector('.gauge-needle');
     
-    // Try multiple API endpoints as fallback
+    // Primary data source - alternative.me
+    // NOTE: If alternative.me shows inaccurate/stale data (e.g., showing 25 when others show 40),
+    // you can add a more reliable source here. To find the API endpoint that feargreedmeter.com uses:
+    // 1. Open feargreedmeter.com in browser
+    // 2. Press F12 → Network tab
+    // 3. Reload page and look for API calls returning Fear & Greed data
+    // 4. Add that endpoint URL to the array below (as first item for priority)
     const apiEndpoints = [
+        // Add more accurate source here when found, e.g.:
+        // 'https://api.feargreedmeter.com/fng', // Example - replace with actual endpoint
         'https://api.alternative.me/fng/?limit=1',
         'https://api.alternative.me/fng/',
-        'https://fear-and-greed-index.p.rapidapi.com/v1/fgi' // Alternative if available
     ];
     
     let success = false;
@@ -1678,12 +1690,17 @@ async function updateFearGreedIndex() {
                 const value = parseInt(indexData.value, 10);
                 const classification = indexData.value_classification || indexData.valueText || '';
                 
-                // Check if data is stale (older than 24 hours)
+                // Check if data is stale (older than 6 hours - data should update more frequently)
                 const timestamp = indexData.timestamp ? parseInt(indexData.timestamp, 10) : null;
                 if (timestamp) {
                     const dataAge = Date.now() / 1000 - timestamp;
-                    if (dataAge > 86400) { // 24 hours
-                        console.warn('Fear & Greed Index data is stale (older than 24 hours)');
+                    const hoursOld = dataAge / 3600;
+                    if (dataAge > 21600) { // 6 hours
+                        console.warn(`Fear & Greed Index data is stale (${hoursOld.toFixed(1)} hours old). Consider checking other sources.`);
+                        // If data is very stale (more than 12 hours), try next endpoint
+                        if (dataAge > 43200) {
+                            continue; // Skip this endpoint, try next
+                        }
                     }
                 }
                 
