@@ -159,12 +159,27 @@ function fetchCoinPrices(array $coinIds): array {
 
 function fetchFearGreedIndex(): ?int {
     // Try multiple API endpoints as fallback
+    // Primary: feargreedmeter.com (more accurate)
+    // Fallback: alternative.me
     $endpoints = [
-        "https://api.alternative.me/fng/?limit=1",
-        "https://api.alternative.me/fng/",
+        [
+            'url' => 'https://feargreedmeter.com/_next/data/UTI167DfsxwvK8Klmh1X2/fear-and-greed-index.json',
+            'parser' => 'feargreedmeter'
+        ],
+        [
+            'url' => 'https://api.alternative.me/fng/?limit=1',
+            'parser' => 'alternative'
+        ],
+        [
+            'url' => 'https://api.alternative.me/fng/',
+            'parser' => 'alternative'
+        ],
     ];
     
-    foreach ($endpoints as $url) {
+    foreach ($endpoints as $endpoint) {
+        $url = $endpoint['url'];
+        $parser = $endpoint['parser'] ?? 'alternative';
+        
         $response = httpRequest($url);
         if (!$response) {
             error_log("Fear & Greed Index API: No response from {$url}");
@@ -179,28 +194,44 @@ function fetchFearGreedIndex(): ?int {
         
         // Handle different response formats
         $value = null;
+        $timestamp = null;
         
-        // Standard format: { "data": [{ "value": 45, ... }] }
-        if (is_array($data) && isset($data['data']) && is_array($data['data']) && !empty($data['data'])) {
-            $latest = $data['data'][0];
-            if (isset($latest['value']) && is_numeric($latest['value'])) {
-                $value = (int)$latest['value'];
+        if ($parser === 'feargreedmeter') {
+            // feargreedmeter.com format: pageProps.data.fgiData.fgi (array)
+            // Get the latest entry (last in array)
+            $fgiArray = $data['pageProps']['data']['fgiData']['fgi'] ?? null;
+            if (is_array($fgiArray) && !empty($fgiArray)) {
+                $latest = end($fgiArray); // Get last item
+                if (isset($latest['now']) && is_numeric($latest['now'])) {
+                    $value = (int)$latest['now'];
+                    if (isset($latest['date'])) {
+                        $timestamp = strtotime($latest['date']);
+                    }
+                }
             }
-        }
-        // Direct value format: { "value": 45, ... }
-        elseif (isset($data['value']) && is_numeric($data['value'])) {
-            $value = (int)$data['value'];
+        } else {
+            // alternative.me format
+            // Standard format: { "data": [{ "value": 45, ... }] }
+            if (is_array($data) && isset($data['data']) && is_array($data['data']) && !empty($data['data'])) {
+                $latest = $data['data'][0];
+                if (isset($latest['value']) && is_numeric($latest['value'])) {
+                    $value = (int)$latest['value'];
+                    if (isset($latest['timestamp'])) {
+                        $timestamp = (int)$latest['timestamp'];
+                    }
+                }
+            }
+            // Direct value format: { "value": 45, ... }
+            elseif (isset($data['value']) && is_numeric($data['value'])) {
+                $value = (int)$data['value'];
+                if (isset($data['timestamp'])) {
+                    $timestamp = (int)$data['timestamp'];
+                }
+            }
         }
         
         if ($value !== null && $value >= 0 && $value <= 100) {
             // Check if data is stale (older than 24 hours)
-            $timestamp = null;
-            if (isset($data['data'][0]['timestamp'])) {
-                $timestamp = (int)$data['data'][0]['timestamp'];
-            } elseif (isset($data['timestamp'])) {
-                $timestamp = (int)$data['timestamp'];
-            }
-            
             if ($timestamp) {
                 $dataAge = time() - $timestamp;
                 if ($dataAge > 86400) { // 24 hours
