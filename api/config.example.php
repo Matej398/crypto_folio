@@ -15,6 +15,7 @@ define('DB_PASS', '');      // Default for local - change in config.php if neede
 define('DB_CHARSET', 'utf8mb4');
 define('SNAPSHOT_TIMEZONE', 'Europe/Ljubljana'); // Used for daily cron snapshots
 define('CRON_SECRET', 'replace-this-token'); // Change before enabling cron access
+define('WEBHOOK_SECRET', ''); // Optional: Set a secret for GitHub webhook verification (generate a random string)
 
 // Avatar upload configuration (configure as needed)
 if (!defined('AVATAR_UPLOAD_DIR')) {
