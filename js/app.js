@@ -1630,18 +1630,23 @@ async function updateFearGreedIndex() {
     const classificationTextEl = document.getElementById('fearGreedClassification');
     const gaugeNeedle = document.querySelector('.gauge-needle');
     
-    // Primary data source - alternative.me
-    // NOTE: If alternative.me shows inaccurate/stale data (e.g., showing 25 when others show 40),
-    // you can add a more reliable source here. To find the API endpoint that feargreedmeter.com uses:
-    // 1. Open feargreedmeter.com in browser
-    // 2. Press F12 → Network tab
-    // 3. Reload page and look for API calls returning Fear & Greed data
-    // 4. Add that endpoint URL to the array below (as first item for priority)
+    // Primary data source - feargreedmeter.com (more accurate than alternative.me)
+    // Fallback to alternative.me if primary source fails
+    // Note: feargreedmeter.com endpoint includes a build ID that may change
+    // If it stops working, check the Network tab on their site for the latest endpoint
     const apiEndpoints = [
-        // Add more accurate source here when found, e.g.:
-        // 'https://api.feargreedmeter.com/fng', // Example - replace with actual endpoint
-        'https://api.alternative.me/fng/?limit=1',
-        'https://api.alternative.me/fng/',
+        {
+            url: 'https://feargreedmeter.com/_next/data/UTI167DfsxwvK8Klmh1X2/fear-and-greed-index.json',
+            parser: 'feargreedmeter' // Custom parser for this format
+        },
+        {
+            url: 'https://api.alternative.me/fng/?limit=1',
+            parser: 'alternative' // Standard parser
+        },
+        {
+            url: 'https://api.alternative.me/fng/',
+            parser: 'alternative'
+        },
     ];
     
     let success = false;
@@ -1653,7 +1658,7 @@ async function updateFearGreedIndex() {
             const controller = new AbortController();
             const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
             
-            const response = await fetch(endpoint, {
+            const response = await fetch(endpoint.url, {
                 method: 'GET',
                 headers: {
                     'Accept': 'application/json',
@@ -1664,26 +1669,37 @@ async function updateFearGreedIndex() {
             clearTimeout(timeoutId);
             
             if (!response.ok) {
-                console.warn(`Fear & Greed API endpoint failed: ${endpoint} (${response.status})`);
+                console.warn(`Fear & Greed API endpoint failed: ${endpoint.url} (${response.status})`);
                 continue;
             }
             
             const data = await response.json();
             console.log('Fear & Greed API data:', data);
             
-            // Handle different response formats
+            // Handle different response formats based on parser type
             let indexData = null;
-            if (data && data.data && Array.isArray(data.data) && data.data.length > 0) {
-                indexData = data.data[0];
-            } else if (data && data.value !== undefined) {
-                // Direct value format
-                indexData = data;
-            } else if (data && data.fgi && data.fgi.now) {
-                // Alternative format
-                indexData = {
-                    value: data.fgi.now.value,
-                    value_classification: data.fgi.now.valueText
-                };
+            
+            if (endpoint.parser === 'feargreedmeter') {
+                // feargreedmeter.com format: pageProps.data.fgiData.fgi (array of historical data)
+                // Get the latest entry (last in array)
+                const fgiArray = data?.pageProps?.data?.fgiData?.fgi;
+                if (Array.isArray(fgiArray) && fgiArray.length > 0) {
+                    const latest = fgiArray[fgiArray.length - 1];
+                    if (latest && typeof latest.now === 'number') {
+                        indexData = {
+                            value: latest.now.toString(),
+                            value_classification: getFearGreedLabel(latest.now) || '',
+                            timestamp: latest.date ? new Date(latest.date).getTime() / 1000 : null
+                        };
+                    }
+                }
+            } else if (endpoint.parser === 'alternative') {
+                // alternative.me format
+                if (data && data.data && Array.isArray(data.data) && data.data.length > 0) {
+                    indexData = data.data[0];
+                } else if (data && data.value !== undefined) {
+                    indexData = data;
+                }
             }
             
             if (indexData && indexData.value !== undefined) {
