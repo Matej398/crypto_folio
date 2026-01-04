@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Poorty - Crypto Portfolio</title>
+    <link rel="icon" type="image/svg+xml" href="favicon.svg?v=1">
+    <link rel="alternate icon" href="favicon.ico?v=1">
+    <link rel="apple-touch-icon" href="favicon.svg?v=1">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+    <!-- Auth Modal -->
+    <div id="authModal" class="modal hidden">
+        <div class="modal-content">
+            <h3 class="modal-title">Sign In</h3>
+            <div id="authError" class="auth-error" style="display: none;"></div>
+            
+            <div class="form-group">
+                <label class="form-label">Password</label>
+                <input type="password" id="authPassword" class="form-input" placeholder="••••••••">
+            </div>
+            
+            <div class="modal-buttons">
+                <button id="signInBtn" class="btn-primary" style="width: 100%;">Sign In</button>
+            </div>
+            
+            <div id="authStatus" class="auth-status" style="display: none;"></div>
+        </div>
+    </div>
+
+    <div id="app" class="container">
+        <!-- Header -->
+        <div class="header">
+            <div>
+                <h1>Poorty</h1>
+            </div>
+            <button id="mobileMenuToggle" class="mobile-menu-toggle" aria-expanded="false" aria-controls="headerActions" aria-label="Toggle menu">
+                <span></span>
+                <span></span>
+                <span></span>
+                <svg class="mobile-menu-close-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 6l12 12M18 6L6 18"></path>
+                </svg>
+            </button>
+            <div class="header-actions" id="headerActions">
+                <div class="header-actions-content">
+                    <div id="userInfo" class="user-menu" style="display: none;">
+                        <div id="userName" class="user-name" title="Blecky398" role="button" tabindex="0">
+                            <img id="userAvatarImage" class="user-avatar-image" src="" alt="" aria-hidden="true">
+                            <svg class="user-name-icon" width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
+                            </svg>
+                            <span class="user-name-text">Blecky398</span>
+                        </div>
+                        <div id="userDropdown" class="user-dropdown">
+                            <button id="changeAvatarBtn" class="user-dropdown-item">Change Avatar</button>
+                            <button id="changePasswordBtn" class="user-dropdown-item">Change Password</button>
+                            <button id="signOutBtn" class="user-dropdown-item">Sign Out</button>
+                        </div>
+                    </div>
+                    <button id="addCoinBtn" class="add-btn" title="Add Coin">
+                        <span class="add-btn-text">+ Add Coin</span>
+                        <svg class="add-btn-icon" width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div id="mobileMenuOverlay" class="mobile-menu-overlay"></div>
+
+        <!-- Portfolio Summary -->
+        <div class="summary-card">
+            <div class="summary-grid">
+                <div class="summary-item primary-total">
+                    <p class="summary-label emphasis">Total Portfolio Value</p>
+                    <p id="totalValue" class="portfolio-value">$0.00</p>
+                </div>
+                <div class="summary-item center-align">
+                    <p class="summary-label">24h Change</p>
+                    <p id="totalChange" class="portfolio-change">$0.00 (0.00%)</p>
+                </div>
+                <div class="summary-item center-align">
+                    <p class="summary-label">Lowest Portfolio Value</p>
+                    <div class="summary-value-with-timestamp">
+                        <p id="lowestValue" class="summary-value">—</p>
+                        <span id="lowestValueTimestamp" class="timestamp-icon" style="display: none;" title=""></span>
+                    </div>
+                </div>
+                <div class="summary-item center-align">
+                    <p class="summary-label">Highest Portfolio Value</p>
+                    <div class="summary-value-with-timestamp">
+                        <p id="highestValue" class="summary-value">—</p>
+                        <span id="highestValueTimestamp" class="timestamp-icon" style="display: none;" title=""></span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="portfolio-tabs-wrapper">
+            <div class="portfolio-tabs">
+                <button id="holdingsTabBtn" class="tab-button active" type="button">Holdings</button>
+                <button id="historyTabBtn" class="tab-button" type="button">History</button>
+            </div>
+        </div>
+
+        <section id="holdingsSection">
+            <!-- Portfolio Grid -->
+            <div id="portfolio" class="portfolio-grid">
+                <div class="empty-state">
+                    <p class="empty-text">No coins added yet. Click "Add Coin" to get started!</p>
+                </div>
+            </div>
+        </section>
+
+        <section id="historySection" class="history-section section-hidden" aria-live="polite">
+            <div id="historyList" class="history-list">
+                <!-- Filled by JS -->
+            </div>
+            <div id="historyPagination" class="history-pagination section-hidden"></div>
+        </section>
+
+    </div>
+
+    <!-- Footer with API Usage -->
+    <footer class="footer">
+        <div class="footer-content">
+            <div class="footer-left">
+                <div class="refresh-info">
+                    <span class="refresh-label">Next Refresh:</span>
+                    <span id="refreshTimer" class="refresh-timer">1:00</span>
+                </div>
+                <div class="api-stats">
+                    <span class="api-stat">
+                        <span class="api-label">This Month:</span>
+                        <span id="apiMonthly" class="api-count">0/10,000</span>
+                    </span>
+                </div>
+            </div>
+            <div class="footer-right">
+                <div class="coin-prices">
+                    <div class="coin-price-item" id="btcPrice">
+                        <img src="https://assets.coingecko.com/coins/images/1/small/bitcoin.png" alt="BTC" class="coin-icon" onerror="this.style.display='none'">
+                        <span class="coin-price-value">$0.00</span>
+                    </div>
+                    <div class="coin-price-item" id="ethPrice">
+                        <img src="https://assets.coingecko.com/coins/images/279/small/ethereum.png" alt="ETH" class="coin-icon" onerror="this.style.display='none'">
+                        <span class="coin-price-value">$0.00</span>
+                    </div>
+                </div>
+                <div class="fear-greed-index" id="fearGreedIndex">
+                    <span class="fear-greed-label">Fear & Greed:</span>
+                    <span class="fear-greed-value" id="fearGreedValue">—</span>
+                    <svg class="fear-greed-gauge" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path class="gauge-background" d="M3 12a9 9 0 0 1 9-9 9 9 0 0 1 9 9" stroke="#b5b5b9" fill="none"/>
+                        <circle class="gauge-center" cx="12" cy="12" r="1.5" fill="#b5b5b9" opacity="0.6"/>
+                        <line class="gauge-needle" x1="12" y1="12" x2="12" y2="5" stroke="currentColor" stroke-width="2.5"/>
+                    </svg>
+                    <span class="fear-greed-classification" id="fearGreedClassification"></span>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Add Coin Modal -->
+    <div id="modal" class="modal hidden">
+        <div class="modal-content">
+            <button id="addModalCloseBtn" class="modal-close-btn" title="Close">
+                <svg width="24" height="24" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                </svg>
+            </button>
+            <h3 class="modal-title">Add Coin to Portfolio</h3>
+            
+            <div class="form-group">
+                <label class="form-label">Cryptocurrency</label>
+                <div class="search-container">
+                    <input type="text" id="coinSearch" class="form-input" placeholder="Type to search cryptocurrency..." autocomplete="off">
+                    <div id="coinSuggestions" class="suggestions-dropdown"></div>
+                </div>
+                <input type="hidden" id="coinSelect" value="">
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Quantity</label>
+                <input type="number" id="quantityInput" step="0.00000001" min="0" placeholder="0.0" class="form-input">
+            </div>
+
+            <div class="modal-buttons">
+                <button id="cancelBtn" class="btn-secondary">Cancel</button>
+                <button id="addBtn" class="btn-primary">Add Coin</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Edit Coin Modal -->
+    <div id="editModal" class="modal hidden">
+        <div class="modal-content">
+            <button id="editCloseBtn" class="modal-close-btn" title="Close">
+                <svg width="24" height="24" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                </svg>
+            </button>
+            <h3 class="modal-title">Edit Coin</h3>
+            
+            <div class="form-group">
+                <label class="form-label">Cryptocurrency</label>
+                <input type="text" id="editCoinName" class="form-input" disabled readonly>
+                <input type="hidden" id="editCoinId" value="">
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Quantity</label>
+                <input type="number" id="editQuantityInput" step="0.00000001" min="0" placeholder="0.0" class="form-input">
+            </div>
+
+            <div class="modal-buttons">
+                <button id="editUpdateBtn" class="btn-primary">Update</button>
+                <button id="editRemoveBtn" class="btn-danger">Remove Coin</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Confirmation Modal -->
+    <div id="confirmModal" class="modal hidden">
+        <div class="modal-content modal-content-small">
+            <h3 class="modal-title">Confirm Action</h3>
+            <p id="confirmMessage" class="confirm-message"></p>
+            <div class="modal-buttons">
+                <button id="confirmCancelBtn" class="btn-secondary">Cancel</button>
+                <button id="confirmOkBtn" class="btn-danger">Confirm</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Change Password Modal -->
+    <div id="changePasswordModal" class="modal hidden">
+        <div class="modal-content">
+            <button id="changePasswordCloseBtn" class="modal-close-btn" title="Close">
+                <svg width="24" height="24" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                </svg>
+            </button>
+            <h3 class="modal-title">Change Password</h3>
+            <div id="changePasswordError" class="auth-error" style="display: none;"></div>
+            
+            <div class="form-group">
+                <label class="form-label">Current Password</label>
+                <input type="password" id="currentPassword" class="form-input" placeholder="••••••••">
+            </div>
+            
+            <div class="form-group">
+                <label class="form-label">New Password</label>
+                <input type="password" id="newPassword" class="form-input" placeholder="••••••••">
+            </div>
+            
+            <div class="form-group">
+                <label class="form-label">Confirm New Password</label>
+                <input type="password" id="confirmNewPassword" class="form-input" placeholder="••••••••">
+            </div>
+            
+            <div class="modal-buttons">
+                <button id="changePasswordCancelBtn" class="btn-secondary">Cancel</button>
+                <button id="changePasswordSubmitBtn" class="btn-primary">Change Password</button>
+            </div>
+            
+            <div id="changePasswordStatus" class="auth-status" style="display: none;"></div>
+        </div>
+    </div>
+
+    <!-- Change Avatar Modal -->
+    <div id="avatarModal" class="modal hidden">
+        <div class="modal-content">
+            <button id="avatarCloseBtn" class="modal-close-btn" title="Close">
+                <svg width="24" height="24" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                </svg>
+            </button>
+            <h3 class="modal-title">Update Avatar</h3>
+
+            <div class="avatar-preview">
+                <img id="avatarPreviewImage" class="avatar-preview-image" src="" alt="Avatar preview">
+                <div id="avatarPreviewFallback" class="avatar-preview-fallback">
+                    <svg width="32" height="32" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
+                    </svg>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label" for="avatarFileInput">Select Image</label>
+                <input type="file" id="avatarFileInput" class="form-input" accept="image/png,image/jpeg,image/webp">
+            </div>
+
+            <p class="avatar-guidelines">PNG, JPG, or WebP up to 1MB. Image will be center-cropped to a square.</p>
+            <div id="avatarError" class="auth-error" style="display: none;"></div>
+
+            <div class="modal-buttons">
+                <button id="avatarCancelBtn" class="btn-secondary">Cancel</button>
+                <button id="avatarUploadBtn" class="btn-primary" disabled>Upload</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="js/app.js"></script>
+</body>
+</html>

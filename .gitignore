@@ -1,0 +1,23 @@
+# Sensitive files - don't commit these!
+api/config.php
+
+# Local development scripts
+start_server.bat
+test_setup.php
+
+# Backup files
+backup_data.json
+*.backup
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Logs
+*.log
