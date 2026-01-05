@@ -143,29 +143,58 @@ async function signOut() {
 
 async function checkAuth() {
     try {
-        const result = await apiRequest('auth.php?action=check');
+        // Use a custom request for auth check to handle 401 gracefully
+        const apiBase = getApiBase();
+        const url = `${apiBase}/auth.php?action=check`;
+        
+        const response = await fetch(url, {
+            method: 'GET',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            credentials: 'include',
+        });
+        
+        // 401 is expected when not logged in, don't treat it as an error
+        if (response.status === 401) {
+            // Not authenticated - try auto-login with saved password
+            const savedPassword = getPasswordFromStorage();
+            if (savedPassword) {
+                console.log('Not authenticated, attempting auto-login with saved password...');
+                const loginResult = await signIn(savedPassword);
+                if (loginResult.success) {
+                    return true;
+                }
+            }
+            return false;
+        }
+        
+        if (!response.ok) {
+            // Other errors - try auto-login
+            const savedPassword = getPasswordFromStorage();
+            if (savedPassword) {
+                console.log('Auth check failed, attempting auto-login with saved password...');
+                const loginResult = await signIn(savedPassword);
+                if (loginResult.success) {
+                    return true;
+                }
+            }
+            return false;
+        }
+        
+        const result = await response.json();
         if (result.success) {
             currentUser = result.user;
             isAuthenticated = true;
             return true;
         }
         
-        // Session expired - try auto-login with saved password
-        const savedPassword = getPasswordFromStorage();
-        if (savedPassword) {
-            console.log('Session expired, attempting auto-login with saved password...');
-            const loginResult = await signIn(savedPassword);
-            if (loginResult.success) {
-                return true;
-            }
-        }
-        
         return false;
     } catch (error) {
-        // Try auto-login on error too
+        // Network error or other exception - try auto-login
         const savedPassword = getPasswordFromStorage();
         if (savedPassword) {
-            console.log('Auth check failed, attempting auto-login with saved password...');
+            console.log('Auth check error, attempting auto-login with saved password...');
             try {
                 const loginResult = await signIn(savedPassword);
                 if (loginResult.success) {
